@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useT } from "./i18n";
 
 export type ConnectionTabItem = {
@@ -25,6 +26,8 @@ export function ConnectionTabs({
   onCloseTab,
   variant = "strip",
   onNewConnection,
+  header,
+  footer,
 }: {
   tabs: ConnectionTabItem[];
   activeTabId?: string | null;
@@ -32,15 +35,20 @@ export function ConnectionTabs({
   onCloseTab?: (id: string) => void;
   variant?: "strip" | "rail";
   onNewConnection?: () => void;
+  /** Rail only: rendered above the tabs (the ☰ menu). */
+  header?: ReactNode;
+  /** Rail only: pinned to the bottom of the rail. */
+  footer?: ReactNode;
 }) {
   const t = useT();
   const rail = variant === "rail";
-  return (
+  const tabList = (
     <div
-      className={rail ? "gts-connection-tabs gts-connection-rail" : "gts-connection-tabs"}
+      className="gts-connection-tabs"
       role="tablist"
       aria-label={t("tabs.connections")}
       aria-orientation={rail ? "vertical" : undefined}
+      hidden={rail && tabs.length === 0 ? true : undefined}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === (activeTabId ?? tabs[0]?.id);
@@ -86,7 +94,14 @@ export function ConnectionTabs({
           </div>
         );
       })}
-      {rail && onNewConnection ? (
+    </div>
+  );
+  if (!rail) return tabList;
+  return (
+    <nav className="gts-connection-rail" aria-label={t("tabs.connections")}>
+      {header ? <div className="gts-connection-rail-header">{header}</div> : null}
+      {tabList}
+      {onNewConnection ? (
         <button
           className="gts-connection-rail-new"
           onClick={onNewConnection}
@@ -96,6 +111,7 @@ export function ConnectionTabs({
           +
         </button>
       ) : null}
-    </div>
+      {footer ? <div className="gts-connection-rail-footer">{footer}</div> : null}
+    </nav>
   );
 }

@@ -16,6 +16,7 @@ export function SpeakingNowBar({
   images,
   serverGroups,
   selectedClientId,
+  showStatus,
   onSelect,
   onOpenPrivateChat,
   onContextMenu,
@@ -27,6 +28,8 @@ export function SpeakingNowBar({
   /** IDE layout only: render group tags and a mic status next to the name. */
   serverGroups?: GroupEntry[] | null;
   selectedClientId: number | null;
+  /** Standard layout: a status line (talking, away, muted) under the name. */
+  showStatus?: boolean;
   onSelect: (clientId: number) => void;
   onOpenPrivateChat: (clientId: number, clientName: string) => void;
   onContextMenu: (e: React.MouseEvent, clientId: number, clientName: string, isSelf: boolean) => void;
@@ -52,7 +55,22 @@ export function SpeakingNowBar({
         >
           <AvatarTile client={c} images={images} className="ts-speaking-now-avatar" isSelf={c.id === ownClientId} />
           {serverGroups === undefined ? (
-            <span className="ts-speaking-now-name">{c.name}</span>
+            <>
+              <span className="ts-speaking-now-name">{c.name}</span>
+              {showStatus && (
+                <span className="ts-speaking-now-state">
+                  {talkers.has(c.id)
+                    ? t("tree.talking")
+                    : c.away
+                      ? t("tree.away")
+                      : c.outputMuted
+                        ? t("tree.soundMuted")
+                        : c.inputMuted || !c.inputHardwareEnabled
+                          ? t("tree.micMuted")
+                          : " "}
+                </span>
+              )}
+            </>
           ) : (
             <div className="ts-speaking-now-body">
               <div className="ts-speaking-now-head">

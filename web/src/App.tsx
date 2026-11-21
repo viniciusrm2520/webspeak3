@@ -441,6 +441,8 @@ function AppInner() {
   const [treeWidth, setTreeWidth] = useState(260);
   const [upperHeight, setUpperHeight] = useState(340);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
+  // Standard desktop: the info column only opens once something is picked.
+  const [infoOpen, setInfoOpen] = useState(false);
   const [chat, setChat] = useState<ChatEntry[]>([]);
   const [serverChat, setServerChat] = useState<ChatEntry[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -3244,7 +3246,10 @@ function AppInner() {
 
   const handleChannelPasswordCancel = () => setChannelPasswordPrompt(null);
 
-  const handleSelectItem = (item: SelectedItem) => setSelected(item);
+  const handleSelectItem = (item: SelectedItem) => {
+    setSelected(item);
+    setInfoOpen(true);
+  };
 
   useEffect(() => {
     const el = chatInputRef.current;
@@ -4173,16 +4178,592 @@ function AppInner() {
       : treeClients.length;
   const novaSplash = designTheme === "nova" && !connected;
   // Nova and IDE collapse the menubar behind a hamburger button.
-  const compactMenu = designTheme === "nova" || designTheme === "ide" || mobile;
+  const compactMenu = designTheme === "nova" || designTheme === "ide" || designTheme === "standard" || mobile;
   // Standard on desktop: server rail | channels + own voice bar | channel
   // header, members and chat | info. Mobile keeps its own layout.
   const standardLayout = designTheme === "standard" && !mobile;
   const ownChannel = ownClient ? channels.find((c) => c.id === ownClient.channel) : undefined;
+  // Standard puts the sender on its own line, so no "Name:" colon there.
+  const chatColon = standardLayout ? "" : ":";
   const ownChannelCount = ownClient ? treeClients.filter((c) => c.channel === ownClient.channel).length : 0;
   const micLabel = !micOn ? t("toolbar.micEnable") : inputMuted ? t("toolbar.micUnmute") : t("toolbar.micMute");
   const streamLabel = DEMO_MODE
     ? t("publish.demoUnavailable")
     : `${publishState === "live" ? t("publish.stop") : t("publish.start")} (${t("publish.alpha")})`;
+
+  // The menubar sits on top in every layout except Standard on desktop,
+  // where it collapses into the ☰ button at the top of the server rail.
+  const menubarEl = (
+    <div className="ts-menubar">
+      <div className={compactMenu ? "ts-nova-menu-dropdown" : undefined} ref={novaMenuRef}>
+      {compactMenu && (
+        <button
+          className="ts-icon-button ts-nova-menu-toggle"
+          onClick={() => setNovaMenuOpen((v) => !v)}
+          aria-label={t("menu.connections")}
+          aria-expanded={novaMenuOpen}
+        >
+          ☰
+        </button>
+      )}
+      <div
+        className={`ts-menubar-items${compactMenu ? " ts-nova-menu-panel" : ""}${
+          novaMenuOpen ? " ts-nova-menu-panel-open" : ""
+        }`}
+        // Picking an entry closes the whole ☰ panel, not just the submenu -
+        // otherwise it stays on top of the dialog the entry just opened.
+        onClick={(e) => {
+          if (compactMenu && (e.target as HTMLElement).closest(".ts-menu-item")) setNovaMenuOpen(false);
+        }}
+      >
+      <div className="ts-menubar-dropdown" ref={connectionsMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={connectionsMenuOpen}
+          onClick={() => setConnectionsMenuOpen((v) => !v)}
+        >
+          {t("menu.connections")}
+        </button>
+        {connectionsMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button
+              className="ts-menu-item"
+              disabled={connecting}
+              onClick={() => {
+                setConnectDialogOpen(true);
+                setConnectionsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🟢</span>
+              <span className="ts-menu-item-label">{t("menu.connections.connect")}</span>
+              <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+S</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={!connected && sessionTabs.length === 0}
+              onClick={() => {
+                handleDisconnect();
+                setConnectionsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔴</span>
+              <span className="ts-menu-item-label">{t("menu.connections.disconnectCurrent")}</span>
+              <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+D</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={sessionTabs.length === 0}
+              onClick={() => {
+                handleDisconnectAll();
+                setConnectionsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">❌</span>
+              <span className="ts-menu-item-label">{t("menu.connections.disconnectAll")}</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="ts-menubar-dropdown" ref={favoritesMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={favoritesMenuOpen}
+          onClick={() => setFavoritesMenuOpen((v) => !v)}
+        >
+          {t("menu.favorites")}
+        </button>
+        {favoritesMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button className="ts-menu-item" onClick={openAddFavorite}>
+              <span className="ts-menu-item-icon">⭐</span>
+              <span className="ts-menu-item-label">{t("menu.favorites.add")}</span>
+              <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+B</span>
+            </button>
+            <button className="ts-menu-item" onClick={openManageFavorites}>
+              <span className="ts-menu-item-icon">🗂️</span>
+              <span className="ts-menu-item-label">{t("menu.favorites.manage")}</span>
+            </button>
+            {favorites.length > 0 && <div className="ts-menu-separator" />}
+            {favorites.map((f) => (
+              <button
+                key={f.id}
+                className="ts-menu-item"
+                disabled={connecting}
+                onClick={() => {
+                  connectToFavorite(f);
+                  setFavoritesMenuOpen(false);
+                }}
+              >
+                <span className="ts-menu-item-icon">🔖</span>
+                <span className="ts-menu-item-label">{f.bookmarkName}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="ts-menubar-dropdown" ref={selfMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={selfMenuOpen}
+          onClick={() => setSelfMenuOpen((v) => !v)}
+        >
+          {t("menu.self")}
+        </button>
+        {selfMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🎙️</span>
+              <span className="ts-menu-item-label">{t("menu.self.recordingProfile")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🔊</span>
+              <span className="ts-menu-item-label">{t("menu.self.playbackProfile")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">⌨️</span>
+              <span className="ts-menu-item-label">{t("menu.self.hotkeyProfile")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🔔</span>
+              <span className="ts-menu-item-label">{t("menu.self.soundPack")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              disabled={!connected}
+              onClick={() => {
+                setAwayDialogMessage("");
+                setAwayDialogOpen(true);
+                setSelfMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">💤</span>
+              <span className="ts-menu-item-label">{t("menu.self.setAway")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={!connected}
+              onClick={() => {
+                void handleToggleMic();
+                setSelfMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">{micOn ? "🔇" : "🎤"}</span>
+              <span className="ts-menu-item-label">
+                {micOn ? t("menu.self.disableMic") : t("menu.self.enableMic")}
+              </span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={!connected}
+              onClick={() => {
+                handleToggleOutputMuted();
+                setSelfMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">{outputMuted ? "🔊" : "🔇"}</span>
+              <span className="ts-menu-item-label">
+                {outputMuted ? t("menu.self.unmuteOutput") : t("menu.self.muteOutput")}
+              </span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              disabled={!connected}
+              onClick={() => {
+                setNicknameDraft(nickname);
+                setChangeNicknameOpen(true);
+                setSelfMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">✎</span>
+              <span className="ts-menu-item-label">{t("menu.self.changeNickname")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🗣️</span>
+              <span className="ts-menu-item-label">{t("menu.self.requestTalkPower")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🖼️</span>
+              <span className="ts-menu-item-label">{t("menu.self.setAvatar")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">🔤</span>
+              <span className="ts-menu-item-label">{t("menu.self.setPhoneticNickname")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              disabled={!ownClient}
+              onClick={() => {
+                if (ownClient) handleShowClientConnectionInfo(ownClient.id, ownClient.name);
+                setSelfMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">ℹ️</span>
+              <span className="ts-menu-item-label">{t("menu.self.connectionInfo")}</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="ts-menubar-dropdown" ref={rightsMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={rightsMenuOpen}
+          onClick={() => setRightsMenuOpen((v) => !v)}
+        >
+          {t("menu.rights")}
+        </button>
+        {rightsMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleOpenPermissionsEditor("server");
+                setRightsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🏷️</span>
+              <span className="ts-menu-item-label">{t("menu.rights.serverGroups")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleOpenPermissionsEditor("channelgroup");
+                setRightsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🎖️</span>
+              <span className="ts-menu-item-label">{t("menu.rights.channelGroups")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleOpenPermissionsEditor("client");
+                setRightsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔐</span>
+              <span className="ts-menu-item-label">{t("menu.rights.serverPermissions")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleOpenPermissionsEditor("channel");
+                setRightsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔑</span>
+              <span className="ts-menu-item-label">{t("menu.rights.channelPermissions")}</span>
+            </button>
+            <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
+              <span className="ts-menu-item-icon">📖</span>
+              <span className="ts-menu-item-label">{t("menu.rights.overview")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleShowPermissionOverview();
+                setRightsMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🙋</span>
+              <span className="ts-menu-item-label">{t("menu.rights.myRights")}</span>
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="ts-menubar-dropdown" ref={extrasMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={extrasMenuOpen}
+          onClick={() => setExtrasMenuOpen((v) => !v)}
+        >
+          {t("menu.extras")}
+        </button>
+        {extrasMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setIdentitiesOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🪪</span>
+              <span className="ts-menu-item-label">{t("menu.extras.identities")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setContactsOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">📇</span>
+              <span className="ts-menu-item-label">{t("menu.extras.contacts")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setCollectedUrlsOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔗</span>
+              <span className="ts-menu-item-label">{t("menu.extras.collectedUrls")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={!connected}
+              onClick={() => {
+                setInviteFriendOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🧑‍🤝‍🧑</span>
+              <span className="ts-menu-item-label">{t("menu.extras.inviteFriend")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setTransfersOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">⇅</span>
+              <span className="ts-menu-item-label">{t("menu.extras.fileTransfers")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setWhisperListsOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🗒️</span>
+              <span className="ts-menu-item-label">{t("menu.extras.whisperLists")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setWhisperHistoryOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🕓</span>
+              <span className="ts-menu-item-label">{t("menu.extras.whisperHistory")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setClientLogOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">📜</span>
+              <span className="ts-menu-item-label">{t("menu.extras.clientLog")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleShowBanList();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🚫</span>
+              <span className="ts-menu-item-label">{t("menu.extras.banList")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleShowComplainList();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">⚠️</span>
+              <span className="ts-menu-item-label">{t("menu.extras.complaintList")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleShowOfflineMessages();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">📧</span>
+              <span className="ts-menu-item-label">{t("menu.extras.offlineMessages")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setServerQueryUsername("");
+                setServerQueryPassword("");
+                setServerQueryLoginOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔑</span>
+              <span className="ts-menu-item-label">{t("menu.extras.serverQueryLogin")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                handleShowServerProtocolLog();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">📄</span>
+              <span className="ts-menu-item-label">{t("menu.extras.serverLog")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              disabled={recording}
+              onClick={() => {
+                startRecording();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">🔴</span>
+              <span className="ts-menu-item-label">{t("menu.extras.startRecording")}</span>
+            </button>
+            <button className="ts-menu-item" disabled>
+              <span className="ts-menu-item-icon">🔴</span>
+              <span className="ts-menu-item-label">{t("menu.extras.startMultitrackRecording")}</span>
+            </button>
+            <button
+              className="ts-menu-item"
+              disabled={!recording}
+              onClick={() => {
+                stopRecording();
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">⏹️</span>
+              <span className="ts-menu-item-label">{t("menu.extras.stopRecording")}</span>
+            </button>
+            <div className="ts-menu-separator" />
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setOptionsDialogOpen(true);
+                setExtrasMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">⚙️</span>
+              <span className="ts-menu-item-label">{t("menu.extras.options")}</span>
+            </button>
+          </div>
+        )}
+      </div>
+      {IS_OWN_HOSTED_INSTANCE && (
+        <button
+          type="button"
+          className="ts-menubar-item ts-plain-button ts-menubar-feedback"
+          onClick={() => setFeedbackOpen(true)}
+        >
+          💬 {t("menu.extras.feedback")}
+        </button>
+      )}
+      <div className="ts-menubar-dropdown" ref={helpMenuRef}>
+        <button
+          type="button"
+          className="ts-menubar-item ts-menubar-item-active ts-plain-button"
+          aria-expanded={helpMenuOpen}
+          onClick={() => setHelpMenuOpen((v) => !v)}
+        >
+          {t("menu.help")}
+        </button>
+        {helpMenuOpen && (
+          <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
+            <button
+              className="ts-menu-item"
+              onClick={() => {
+                setAboutOpen(true);
+                setHelpMenuOpen(false);
+              }}
+            >
+              <span className="ts-menu-item-icon">ℹ️</span>
+              <span className="ts-menu-item-label">{t("menu.help.about")}</span>
+            </button>
+            <a
+              className="ts-menu-item"
+              href="https://github.com/WebSpeak3/webspeak3"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setHelpMenuOpen(false)}
+            >
+              <span className="ts-menu-item-icon">🐙</span>
+              <span className="ts-menu-item-label">{t("menu.help.github")}</span>
+            </a>
+            <a
+              className="ts-menu-item"
+              href="https://github.com/WebSpeak3/webspeak3/releases"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setHelpMenuOpen(false)}
+            >
+              <span className="ts-menu-item-icon">📋</span>
+              <span className="ts-menu-item-label">{t("menu.help.changelog")}</span>
+            </a>
+            <a
+              className="ts-menu-item"
+              href="https://github.com/WebSpeak3/webspeak3#translating"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setHelpMenuOpen(false)}
+            >
+              <span className="ts-menu-item-icon">🌐</span>
+              <span className="ts-menu-item-label">{t("menu.help.translate")}</span>
+            </a>
+            {IS_OWN_HOSTED_INSTANCE && (
+              <button
+                className="ts-menu-item"
+                onClick={() => {
+                  setTosMandatory(false);
+                  setTosOpen(true);
+                  setHelpMenuOpen(false);
+                }}
+              >
+                <span className="ts-menu-item-icon">📜</span>
+                <span className="ts-menu-item-label">{t("menu.extras.tos")}</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      </div>
+      </div>
+      {mobile && designTheme !== "nova" && (
+        <div className="ts-mobile-title">
+          <span className="ts-mobile-title-name">{connected ? serverName || host : "WebSpeak3"}</span>
+          <span className={`ts-mobile-title-status${connected ? " ts-mobile-title-status-on" : ""}`}>
+            {connected ? ownClient?.name ?? t("design.status.connected") : t("tree.notConnected")}
+          </span>
+        </div>
+      )}
+      {designTheme === "nova" && (
+        <div className="ts-nova-topbar-server">
+          <span className="ts-nova-topbar-logo">W</span>
+          <span className="ts-nova-topbar-name">{connected ? serverName || host : "WebSpeak3"}</span>
+          <span className={`ts-nova-topbar-status${connected ? " ts-nova-topbar-status-on" : ""}`}>
+            <span className="ts-nova-topbar-dot" />
+            {connected ? t("design.status.connected") : t("tree.notConnected")}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <DisplayPrefsContext.Provider value={displayPrefs}>
@@ -4206,589 +4787,7 @@ function AppInner() {
           </button>}
         </div>
       )}
-      <div className="ts-menubar">
-        <div className={compactMenu ? "ts-nova-menu-dropdown" : undefined} ref={novaMenuRef}>
-        {compactMenu && (
-          <button
-            className="ts-icon-button ts-nova-menu-toggle"
-            onClick={() => setNovaMenuOpen((v) => !v)}
-            aria-label={t("menu.connections")}
-            aria-expanded={novaMenuOpen}
-          >
-            ☰
-          </button>
-        )}
-        <div
-          className={`ts-menubar-items${compactMenu ? " ts-nova-menu-panel" : ""}${
-            novaMenuOpen ? " ts-nova-menu-panel-open" : ""
-          }`}
-          // Picking an entry closes the whole ☰ panel, not just the submenu -
-          // otherwise it stays on top of the dialog the entry just opened.
-          onClick={(e) => {
-            if (compactMenu && (e.target as HTMLElement).closest(".ts-menu-item")) setNovaMenuOpen(false);
-          }}
-        >
-        <div className="ts-menubar-dropdown" ref={connectionsMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={connectionsMenuOpen}
-            onClick={() => setConnectionsMenuOpen((v) => !v)}
-          >
-            {t("menu.connections")}
-          </button>
-          {connectionsMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button
-                className="ts-menu-item"
-                disabled={connecting}
-                onClick={() => {
-                  setConnectDialogOpen(true);
-                  setConnectionsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🟢</span>
-                <span className="ts-menu-item-label">{t("menu.connections.connect")}</span>
-                <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+S</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={!connected && sessionTabs.length === 0}
-                onClick={() => {
-                  handleDisconnect();
-                  setConnectionsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔴</span>
-                <span className="ts-menu-item-label">{t("menu.connections.disconnectCurrent")}</span>
-                <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+D</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={sessionTabs.length === 0}
-                onClick={() => {
-                  handleDisconnectAll();
-                  setConnectionsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">❌</span>
-                <span className="ts-menu-item-label">{t("menu.connections.disconnectAll")}</span>
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="ts-menubar-dropdown" ref={favoritesMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={favoritesMenuOpen}
-            onClick={() => setFavoritesMenuOpen((v) => !v)}
-          >
-            {t("menu.favorites")}
-          </button>
-          {favoritesMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button className="ts-menu-item" onClick={openAddFavorite}>
-                <span className="ts-menu-item-icon">⭐</span>
-                <span className="ts-menu-item-label">{t("menu.favorites.add")}</span>
-                <span className="ts-menu-item-shortcut">{t("shortcut.ctrl")}+B</span>
-              </button>
-              <button className="ts-menu-item" onClick={openManageFavorites}>
-                <span className="ts-menu-item-icon">🗂️</span>
-                <span className="ts-menu-item-label">{t("menu.favorites.manage")}</span>
-              </button>
-              {favorites.length > 0 && <div className="ts-menu-separator" />}
-              {favorites.map((f) => (
-                <button
-                  key={f.id}
-                  className="ts-menu-item"
-                  disabled={connecting}
-                  onClick={() => {
-                    connectToFavorite(f);
-                    setFavoritesMenuOpen(false);
-                  }}
-                >
-                  <span className="ts-menu-item-icon">🔖</span>
-                  <span className="ts-menu-item-label">{f.bookmarkName}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="ts-menubar-dropdown" ref={selfMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={selfMenuOpen}
-            onClick={() => setSelfMenuOpen((v) => !v)}
-          >
-            {t("menu.self")}
-          </button>
-          {selfMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🎙️</span>
-                <span className="ts-menu-item-label">{t("menu.self.recordingProfile")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🔊</span>
-                <span className="ts-menu-item-label">{t("menu.self.playbackProfile")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">⌨️</span>
-                <span className="ts-menu-item-label">{t("menu.self.hotkeyProfile")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🔔</span>
-                <span className="ts-menu-item-label">{t("menu.self.soundPack")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                disabled={!connected}
-                onClick={() => {
-                  setAwayDialogMessage("");
-                  setAwayDialogOpen(true);
-                  setSelfMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">💤</span>
-                <span className="ts-menu-item-label">{t("menu.self.setAway")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={!connected}
-                onClick={() => {
-                  void handleToggleMic();
-                  setSelfMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">{micOn ? "🔇" : "🎤"}</span>
-                <span className="ts-menu-item-label">
-                  {micOn ? t("menu.self.disableMic") : t("menu.self.enableMic")}
-                </span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={!connected}
-                onClick={() => {
-                  handleToggleOutputMuted();
-                  setSelfMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">{outputMuted ? "🔊" : "🔇"}</span>
-                <span className="ts-menu-item-label">
-                  {outputMuted ? t("menu.self.unmuteOutput") : t("menu.self.muteOutput")}
-                </span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                disabled={!connected}
-                onClick={() => {
-                  setNicknameDraft(nickname);
-                  setChangeNicknameOpen(true);
-                  setSelfMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">✎</span>
-                <span className="ts-menu-item-label">{t("menu.self.changeNickname")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🗣️</span>
-                <span className="ts-menu-item-label">{t("menu.self.requestTalkPower")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🖼️</span>
-                <span className="ts-menu-item-label">{t("menu.self.setAvatar")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">🔤</span>
-                <span className="ts-menu-item-label">{t("menu.self.setPhoneticNickname")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                disabled={!ownClient}
-                onClick={() => {
-                  if (ownClient) handleShowClientConnectionInfo(ownClient.id, ownClient.name);
-                  setSelfMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">ℹ️</span>
-                <span className="ts-menu-item-label">{t("menu.self.connectionInfo")}</span>
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="ts-menubar-dropdown" ref={rightsMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={rightsMenuOpen}
-            onClick={() => setRightsMenuOpen((v) => !v)}
-          >
-            {t("menu.rights")}
-          </button>
-          {rightsMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleOpenPermissionsEditor("server");
-                  setRightsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🏷️</span>
-                <span className="ts-menu-item-label">{t("menu.rights.serverGroups")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleOpenPermissionsEditor("channelgroup");
-                  setRightsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🎖️</span>
-                <span className="ts-menu-item-label">{t("menu.rights.channelGroups")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleOpenPermissionsEditor("client");
-                  setRightsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔐</span>
-                <span className="ts-menu-item-label">{t("menu.rights.serverPermissions")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleOpenPermissionsEditor("channel");
-                  setRightsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔑</span>
-                <span className="ts-menu-item-label">{t("menu.rights.channelPermissions")}</span>
-              </button>
-              <button className="ts-menu-item" disabled title={t("clientContext.notSupported")}>
-                <span className="ts-menu-item-icon">📖</span>
-                <span className="ts-menu-item-label">{t("menu.rights.overview")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleShowPermissionOverview();
-                  setRightsMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🙋</span>
-                <span className="ts-menu-item-label">{t("menu.rights.myRights")}</span>
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="ts-menubar-dropdown" ref={extrasMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={extrasMenuOpen}
-            onClick={() => setExtrasMenuOpen((v) => !v)}
-          >
-            {t("menu.extras")}
-          </button>
-          {extrasMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setIdentitiesOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🪪</span>
-                <span className="ts-menu-item-label">{t("menu.extras.identities")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setContactsOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">📇</span>
-                <span className="ts-menu-item-label">{t("menu.extras.contacts")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setCollectedUrlsOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔗</span>
-                <span className="ts-menu-item-label">{t("menu.extras.collectedUrls")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={!connected}
-                onClick={() => {
-                  setInviteFriendOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🧑‍🤝‍🧑</span>
-                <span className="ts-menu-item-label">{t("menu.extras.inviteFriend")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setTransfersOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">⇅</span>
-                <span className="ts-menu-item-label">{t("menu.extras.fileTransfers")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setWhisperListsOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🗒️</span>
-                <span className="ts-menu-item-label">{t("menu.extras.whisperLists")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setWhisperHistoryOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🕓</span>
-                <span className="ts-menu-item-label">{t("menu.extras.whisperHistory")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setClientLogOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">📜</span>
-                <span className="ts-menu-item-label">{t("menu.extras.clientLog")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleShowBanList();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🚫</span>
-                <span className="ts-menu-item-label">{t("menu.extras.banList")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleShowComplainList();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">⚠️</span>
-                <span className="ts-menu-item-label">{t("menu.extras.complaintList")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleShowOfflineMessages();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">📧</span>
-                <span className="ts-menu-item-label">{t("menu.extras.offlineMessages")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setServerQueryUsername("");
-                  setServerQueryPassword("");
-                  setServerQueryLoginOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔑</span>
-                <span className="ts-menu-item-label">{t("menu.extras.serverQueryLogin")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  handleShowServerProtocolLog();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">📄</span>
-                <span className="ts-menu-item-label">{t("menu.extras.serverLog")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                disabled={recording}
-                onClick={() => {
-                  startRecording();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">🔴</span>
-                <span className="ts-menu-item-label">{t("menu.extras.startRecording")}</span>
-              </button>
-              <button className="ts-menu-item" disabled>
-                <span className="ts-menu-item-icon">🔴</span>
-                <span className="ts-menu-item-label">{t("menu.extras.startMultitrackRecording")}</span>
-              </button>
-              <button
-                className="ts-menu-item"
-                disabled={!recording}
-                onClick={() => {
-                  stopRecording();
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">⏹️</span>
-                <span className="ts-menu-item-label">{t("menu.extras.stopRecording")}</span>
-              </button>
-              <div className="ts-menu-separator" />
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setOptionsDialogOpen(true);
-                  setExtrasMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">⚙️</span>
-                <span className="ts-menu-item-label">{t("menu.extras.options")}</span>
-              </button>
-            </div>
-          )}
-        </div>
-        {IS_OWN_HOSTED_INSTANCE && (
-          <button
-            type="button"
-            className="ts-menubar-item ts-plain-button ts-menubar-feedback"
-            onClick={() => setFeedbackOpen(true)}
-          >
-            💬 {t("menu.extras.feedback")}
-          </button>
-        )}
-        <div className="ts-menubar-dropdown" ref={helpMenuRef}>
-          <button
-            type="button"
-            className="ts-menubar-item ts-menubar-item-active ts-plain-button"
-            aria-expanded={helpMenuOpen}
-            onClick={() => setHelpMenuOpen((v) => !v)}
-          >
-            {t("menu.help")}
-          </button>
-          {helpMenuOpen && (
-            <div className="ts-menu" ref={focusFirstItem} onKeyDown={handleMenuKeyDown}>
-              <button
-                className="ts-menu-item"
-                onClick={() => {
-                  setAboutOpen(true);
-                  setHelpMenuOpen(false);
-                }}
-              >
-                <span className="ts-menu-item-icon">ℹ️</span>
-                <span className="ts-menu-item-label">{t("menu.help.about")}</span>
-              </button>
-              <a
-                className="ts-menu-item"
-                href="https://github.com/WebSpeak3/webspeak3"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setHelpMenuOpen(false)}
-              >
-                <span className="ts-menu-item-icon">🐙</span>
-                <span className="ts-menu-item-label">{t("menu.help.github")}</span>
-              </a>
-              <a
-                className="ts-menu-item"
-                href="https://github.com/WebSpeak3/webspeak3/releases"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setHelpMenuOpen(false)}
-              >
-                <span className="ts-menu-item-icon">📋</span>
-                <span className="ts-menu-item-label">{t("menu.help.changelog")}</span>
-              </a>
-              <a
-                className="ts-menu-item"
-                href="https://github.com/WebSpeak3/webspeak3#translating"
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setHelpMenuOpen(false)}
-              >
-                <span className="ts-menu-item-icon">🌐</span>
-                <span className="ts-menu-item-label">{t("menu.help.translate")}</span>
-              </a>
-              {IS_OWN_HOSTED_INSTANCE && (
-                <button
-                  className="ts-menu-item"
-                  onClick={() => {
-                    setTosMandatory(false);
-                    setTosOpen(true);
-                    setHelpMenuOpen(false);
-                  }}
-                >
-                  <span className="ts-menu-item-icon">📜</span>
-                  <span className="ts-menu-item-label">{t("menu.extras.tos")}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        </div>
-        </div>
-        {mobile && designTheme !== "nova" && (
-          <div className="ts-mobile-title">
-            <span className="ts-mobile-title-name">{connected ? serverName || host : "WebSpeak3"}</span>
-            <span className={`ts-mobile-title-status${connected ? " ts-mobile-title-status-on" : ""}`}>
-              {connected ? ownClient?.name ?? t("design.status.connected") : t("tree.notConnected")}
-            </span>
-          </div>
-        )}
-        {standardLayout && (
-          <div className="ts-menubar-end">
-            <button
-              className="ts-menubar-icon-btn"
-              onClick={() => setTheme((mode) => (mode === "dark" ? "light" : "dark"))}
-              title={t("toolbar.toggleTheme")}
-              aria-label={t("toolbar.toggleTheme")}
-            >
-              <MobileIcon name={theme === "dark" ? "sun" : "moon"} />
-            </button>
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="ts-app-logo" />
-            <span className="ts-app-title" role="heading" aria-level={1}>WebSpeak3</span>
-          </div>
-        )}
-        {designTheme === "nova" && (
-          <div className="ts-nova-topbar-server">
-            <span className="ts-nova-topbar-logo">W</span>
-            <span className="ts-nova-topbar-name">{connected ? serverName || host : "WebSpeak3"}</span>
-            <span className={`ts-nova-topbar-status${connected ? " ts-nova-topbar-status-on" : ""}`}>
-              <span className="ts-nova-topbar-dot" />
-              {connected ? t("design.status.connected") : t("tree.notConnected")}
-            </span>
-          </div>
-        )}
-      </div>
+      {!standardLayout && menubarEl}
 
       {!standardLayout && <div className="ts-toolbar">
         {designTheme === "nova" && connected && ownClient && (
@@ -6056,7 +6055,7 @@ function AppInner() {
         </div>
       )}
 
-      <main className="ts-body">
+      <main className={`ts-body${standardLayout && !infoOpen ? " ts-info-closed" : ""}`}>
         {standardLayout && (
           <ConnectionTabs
             variant="rail"
@@ -6065,6 +6064,20 @@ function AppInner() {
             onSelectTab={switchToSession}
             onCloseTab={closeSessionTab}
             onNewConnection={() => setConnectDialogOpen(true)}
+            header={menubarEl}
+            footer={
+              <>
+                <span className="ts-visually-hidden" role="heading" aria-level={1}>WebSpeak3</span>
+                <button
+                  className="ts-rail-icon-btn"
+                  onClick={() => setTheme((mode) => (mode === "dark" ? "light" : "dark"))}
+                  title={t("toolbar.toggleTheme")}
+                  aria-label={t("toolbar.toggleTheme")}
+                >
+                  <MobileIcon name={theme === "dark" ? "sun" : "moon"} />
+                </button>
+              </>
+            }
           />
         )}
         <div className="ts-upper" style={{ height: upperHeight }}>
@@ -6194,6 +6207,11 @@ function AppInner() {
           <div className="ts-resize-handle-vertical" onMouseDown={startTreeResize} />
 
           <div className="ts-side-panel">
+            {connected && standardLayout && (
+              <button className="ts-side-panel-close" onClick={() => setInfoOpen(false)} title={t("dialog.close")} aria-label={t("dialog.close")}>
+                ×
+              </button>
+            )}
             {connected && serverBannerUrl && showServerBanner && (
               <div className="ts-banner-panel">
                 <img className="ts-server-banner" src={serverBannerUrl} alt="" referrerPolicy="no-referrer" />
@@ -6237,8 +6255,11 @@ function AppInner() {
             <div className="ts-channel-header">
               <h2 className="ts-channel-header-name">{ownChannel ? ownChannel.name : serverName || host}</h2>
               <span className="ts-channel-header-meta">
-                {serverName || host}
-                {ownChannel ? ` · ${t("info.clients")} ${ownChannelCount}` : ""}
+                {ownChannel
+                  ? [ownChannel.codec, ownChannel.maxClients ? `${ownChannelCount} / ${ownChannel.maxClients}` : `${ownChannelCount}`]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : serverName || host}
               </span>
               {recording && (
                 <button
@@ -6290,6 +6311,7 @@ function AppInner() {
               images={serverIconImages}
               serverGroups={designTheme === "ide" ? serverGroups : undefined}
               selectedClientId={selected?.type === "client" ? selected.id : null}
+              showStatus={standardLayout}
               onSelect={(id) => handleSelectItem({ type: "client", id })}
               onOpenPrivateChat={handleOpenPrivateChat}
               onContextMenu={handleClientContextMenu}
@@ -6314,7 +6336,7 @@ function AppInner() {
                       entry.fromLog ? " ts-chat-line-logged" : ""
                     }`}
                   >
-                    <span className="ts-chat-from">{entry.from}:</span>{" "}
+                    <span className="ts-chat-from">{entry.from}{chatColon}</span>{" "}
                     <span className="ts-chat-bubble">{renderBbcode(entry.message, { images: chatImages, stillImages: !treeOptions.animateImages })}</span>
                   </div>
                 ))
@@ -6329,7 +6351,7 @@ function AppInner() {
                         key={i}
                         className={`ts-chat-line${entry.from === ownClient?.name ? " ts-chat-line-self" : ""}`}
                       >
-                        <span className="ts-chat-from">{entry.from}:</span>{" "}
+                        <span className="ts-chat-from">{entry.from}{chatColon}</span>{" "}
                         <span className="ts-chat-bubble">{renderBbcode(entry.message, { images: chatImages, stillImages: !treeOptions.animateImages })}</span>
                       </div>
                     )
@@ -6346,7 +6368,7 @@ function AppInner() {
                       }`}
                     >
                       <span className="ts-chat-from">
-                        {entry.fromSelf ? t("chat.you") : pmThreads[activeTab].partnerName}:
+                        {entry.fromSelf ? t("chat.you") : pmThreads[activeTab].partnerName}{chatColon}
                       </span>{" "}
                       <span className="ts-chat-bubble">{renderBbcode(entry.message, { images: chatImages, stillImages: !treeOptions.animateImages })}</span>
                     </div>
