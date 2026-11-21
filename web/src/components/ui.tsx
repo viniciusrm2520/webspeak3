@@ -64,6 +64,11 @@ const MOBILE_ICONS = {
   tree: "M4 5h16M8 10h12M8 15h12M4 5v15M4 10h4M4 15h4M8 20h12M4 20h4",
   chat: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
   info: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5",
+  sun: "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
+  moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
+  screen: "M3 4h18v12H3zM8 20h8M12 16v4",
+  screenStop: "M3 4h18v12H3zM8 20h8M12 16v4M9 7l6 6M15 7l-6 6",
+  music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
 } as const;
 
 export function MobileIcon({ name }: { name: keyof typeof MOBILE_ICONS }) {

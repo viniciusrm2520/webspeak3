@@ -4764,6 +4764,20 @@ function AppInner() {
             </span>
           </div>
         )}
+        {standardLayout && (
+          <div className="ts-menubar-end">
+            <button
+              className="ts-menubar-icon-btn"
+              onClick={() => setTheme((mode) => (mode === "dark" ? "light" : "dark"))}
+              title={t("toolbar.toggleTheme")}
+              aria-label={t("toolbar.toggleTheme")}
+            >
+              <MobileIcon name={theme === "dark" ? "sun" : "moon"} />
+            </button>
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="ts-app-logo" />
+            <span className="ts-app-title" role="heading" aria-level={1}>WebSpeak3</span>
+          </div>
+        )}
         {designTheme === "nova" && (
           <div className="ts-nova-topbar-server">
             <span className="ts-nova-topbar-logo">W</span>
@@ -4776,7 +4790,7 @@ function AppInner() {
         )}
       </div>
 
-      <div className="ts-toolbar">
+      {!standardLayout && <div className="ts-toolbar">
         {designTheme === "nova" && connected && ownClient && (
           <div className="ts-nova-toolbar-self">
             <span className="ts-nova-toolbar-avatar">
@@ -5026,7 +5040,7 @@ function AppInner() {
           <span className="ts-app-title" role="heading" aria-level={1}>WebSpeak3</span>
         </div>
 
-      </div>
+      </div>}
 
       {!standardLayout && sessionTabs.length > (mobile ? 1 : 0) ? (
         <ConnectionTabs
@@ -6106,6 +6120,32 @@ function AppInner() {
                   <div className="ts-self-bar">
                     <AvatarTile client={ownClient} images={serverIconImages} className="ts-self-bar-avatar" isSelf />
                     <span className="ts-self-bar-name">{ownClient.name}</span>
+                    {pushToTalk && micOn && (
+                      <button
+                        className={`ts-self-bar-btn${pttPressed ? " ts-self-bar-btn-on" : ""}`}
+                        onPointerDown={(e) => {
+                          e.currentTarget.setPointerCapture(e.pointerId);
+                          setPttPressed(true);
+                        }}
+                        onPointerUp={() => setPttPressed(false)}
+                        onPointerCancel={() => setPttPressed(false)}
+                        onKeyDown={(e) => {
+                          if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+                            e.preventDefault();
+                            setPttPressed(true);
+                          }
+                        }}
+                        onKeyUp={(e) => {
+                          if (e.key === " " || e.key === "Enter") setPttPressed(false);
+                        }}
+                        onContextMenu={(e) => e.preventDefault()}
+                        title={t("toolbar.pushToTalk")}
+                        aria-label={t("toolbar.pushToTalk")}
+                        aria-pressed={pttPressed}
+                      >
+                        <MobileIcon name="talk" />
+                      </button>
+                    )}
                     <button
                       className={`ts-self-bar-btn${micOn && !inputMuted ? "" : " ts-self-bar-btn-off"}`}
                       onClick={handleToggleMic}
@@ -6200,6 +6240,37 @@ function AppInner() {
                 {serverName || host}
                 {ownChannel ? ` · ${t("info.clients")} ${ownChannelCount}` : ""}
               </span>
+              {recording && (
+                <button
+                  className="ts-channel-header-recording"
+                  onClick={stopRecording}
+                  title={t("menu.extras.stopRecording")}
+                  aria-label={t("menu.extras.stopRecording")}
+                >
+                  <span className="ts-channel-header-recording-dot" aria-hidden="true" />
+                  REC
+                </button>
+              )}
+              <button
+                className={`ts-channel-header-btn${publishState === "live" ? " ts-channel-header-btn-on" : ""}`}
+                onClick={handleStreamButton}
+                disabled={ownClientId === null || DEMO_MODE}
+                title={streamLabel}
+                aria-label={streamLabel}
+              >
+                <MobileIcon name={publishState === "live" ? "screenStop" : "screen"} />
+              </button>
+              {TAB_AUDIO_SUPPORTED && (
+                <button
+                  className={`ts-channel-header-btn${tabAudioOn ? " ts-channel-header-btn-on" : ""}`}
+                  onClick={handleToggleTabAudio}
+                  disabled={!micOn}
+                  title={tabAudioOn ? t("tabAudio.stop") : t("tabAudio.start")}
+                  aria-label={tabAudioOn ? t("tabAudio.stop") : t("tabAudio.start")}
+                >
+                  <MobileIcon name="music" />
+                </button>
+              )}
               <button
                 className="ts-channel-header-leave"
                 onClick={handleDisconnect}
