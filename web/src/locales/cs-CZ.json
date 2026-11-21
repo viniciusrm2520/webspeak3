@@ -299,7 +299,7 @@
   "options.section.design": "Vzhled",
   "design.subtitle": "Zvolte vzhled aplikace.",
   "design.theme.standard": "Standardní",
-  "design.theme.standard.desc": "Původní vzhled WebSpeak3.",
+  "design.theme.standard.desc": "Lišta serverů, seznam kanálů a karty všech v tvém kanálu.",
   "design.theme.nova": "Nova",
   "design.theme.nova.desc": "Modernější tmavý vzhled se zaoblenými prvky.",
   "design.theme.pulse": "Pulse",

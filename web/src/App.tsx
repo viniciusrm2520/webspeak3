@@ -1,6 +1,7 @@
 import "./App.css";
 // After App.css: its :where() base variables have the same (zero) specificity.
 import "./styles/ide.css";
+import "./styles/standard.css";
 import {
   useEffect,
   useMemo,
@@ -146,7 +147,7 @@ import { FileTransfersWindow } from "./components/FileTransfersWindow";
 import { InfoPanel } from "./components/InfoPanel";
 import { NewsTicker } from "./components/NewsTicker";
 import { SpeakingNowBar } from "./components/SpeakingNowBar";
-import { AlphaBadge, MobileIcon } from "./components/ui";
+import { AlphaBadge, AvatarTile, MobileIcon } from "./components/ui";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import {
   applyParkedGatewayEvent,
@@ -4173,6 +4174,11 @@ function AppInner() {
   const novaSplash = designTheme === "nova" && !connected;
   // Nova and IDE collapse the menubar behind a hamburger button.
   const compactMenu = designTheme === "nova" || designTheme === "ide" || mobile;
+  // Standard on desktop: server rail | channels + own voice bar | channel
+  // header, members and chat | info. Mobile keeps its own layout.
+  const standardLayout = designTheme === "standard" && !mobile;
+  const ownChannel = ownClient ? channels.find((c) => c.id === ownClient.channel) : undefined;
+  const ownChannelCount = ownClient ? treeClients.filter((c) => c.channel === ownClient.channel).length : 0;
   const micLabel = !micOn ? t("toolbar.micEnable") : inputMuted ? t("toolbar.micUnmute") : t("toolbar.micMute");
   const streamLabel = DEMO_MODE
     ? t("publish.demoUnavailable")
@@ -5022,7 +5028,7 @@ function AppInner() {
 
       </div>
 
-      {sessionTabs.length > (mobile ? 1 : 0) ? (
+      {!standardLayout && sessionTabs.length > (mobile ? 1 : 0) ? (
         <ConnectionTabs
           tabs={sessionTabs}
           activeTabId={activeSessionId}
@@ -6037,6 +6043,16 @@ function AppInner() {
       )}
 
       <main className="ts-body">
+        {standardLayout && (
+          <ConnectionTabs
+            variant="rail"
+            tabs={sessionTabs}
+            activeTabId={activeSessionId}
+            onSelectTab={switchToSession}
+            onCloseTab={closeSessionTab}
+            onNewConnection={() => setConnectDialogOpen(true)}
+          />
+        )}
         <div className="ts-upper" style={{ height: upperHeight }}>
           <div className="ts-tree-panel" style={{ width: treeWidth }} onKeyDown={handleTreeKeyDown}>
             {connected ? (
@@ -6086,6 +6102,28 @@ function AppInner() {
                   onClientContextMenu={handleClientContextMenu}
                   onChannelContextMenu={handleChannelContextMenu}
                 />
+                {standardLayout && ownClient && (
+                  <div className="ts-self-bar">
+                    <AvatarTile client={ownClient} images={serverIconImages} className="ts-self-bar-avatar" isSelf />
+                    <span className="ts-self-bar-name">{ownClient.name}</span>
+                    <button
+                      className={`ts-self-bar-btn${micOn && !inputMuted ? "" : " ts-self-bar-btn-off"}`}
+                      onClick={handleToggleMic}
+                      title={micLabel}
+                      aria-label={micLabel}
+                    >
+                      <MobileIcon name={micOn && !inputMuted ? "mic" : "micOff"} />
+                    </button>
+                    <button
+                      className={`ts-self-bar-btn${outputMuted ? " ts-self-bar-btn-off" : ""}`}
+                      onClick={handleToggleOutputMuted}
+                      title={outputMuted ? t("toolbar.unmuteSound") : t("toolbar.muteSound")}
+                      aria-label={outputMuted ? t("toolbar.unmuteSound") : t("toolbar.muteSound")}
+                    >
+                      <MobileIcon name={outputMuted ? "soundOff" : "sound"} />
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div className="ts-tree-empty">
@@ -6155,7 +6193,25 @@ function AppInner() {
               <span>{channels.find((c) => c.id === ownClient?.channel)?.name ?? ""}</span>
             </div>
           )}
-          {connected && (designTheme === "pulse" || designTheme === "ide") && (
+          {connected && standardLayout && (
+            <div className="ts-channel-header">
+              <h2 className="ts-channel-header-name">{ownChannel ? ownChannel.name : serverName || host}</h2>
+              <span className="ts-channel-header-meta">
+                {serverName || host}
+                {ownChannel ? ` · ${t("info.clients")} ${ownChannelCount}` : ""}
+              </span>
+              <button
+                className="ts-channel-header-leave"
+                onClick={handleDisconnect}
+                title={t("menu.connections.disconnectCurrent")}
+                aria-label={t("menu.connections.disconnectCurrent")}
+              >
+                <MobileIcon name="leave" />
+                {t("mobile.leave")}
+              </button>
+            </div>
+          )}
+          {connected && (designTheme === "pulse" || designTheme === "ide" || standardLayout) && (
             <SpeakingNowBar
               clients={treeClients}
               talkers={displayTalkers}

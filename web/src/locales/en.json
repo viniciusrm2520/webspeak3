@@ -299,7 +299,7 @@
   "options.section.design": "Appearance",
   "design.subtitle": "Choose the application's look.",
   "design.theme.standard": "Standard",
-  "design.theme.standard.desc": "The original WebSpeak3 design.",
+  "design.theme.standard.desc": "Server rail, channel list and cards for everyone in your channel.",
   "design.theme.nova": "Nova",
   "design.theme.nova.desc": "A more modern, dark design with rounded elements.",
   "design.theme.pulse": "Pulse",

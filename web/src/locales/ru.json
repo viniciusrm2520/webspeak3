@@ -299,7 +299,7 @@
   "options.section.design": "Оформление",
   "design.subtitle": "Выберите внешний вид приложения.",
   "design.theme.standard": "Стандарт",
-  "design.theme.standard.desc": "Оригинальный дизайн WebSpeak3.",
+  "design.theme.standard.desc": "Панель серверов, список каналов и карточки всех в вашем канале.",
   "design.theme.nova": "Nova",
   "design.theme.nova.desc": "Более современный тёмный дизайн со скруглёнными элементами.",
   "design.theme.pulse": "Pulse",

@@ -238,7 +238,7 @@
   "options.section.design": "外观",
   "design.subtitle": "选择应用外观。",
   "design.theme.standard": "标准",
-  "design.theme.standard.desc": "原始 WebSpeak3 设计。",
+  "design.theme.standard.desc": "服务器栏、频道列表，以及你所在频道中每个人的卡片。",
   "design.theme.nova": "Nova",
   "design.theme.nova.desc": "更现代的深色设计，带圆角元素。",
   "design.theme.pulse": "Pulse",

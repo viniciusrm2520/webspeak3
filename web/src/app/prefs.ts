@@ -176,7 +176,7 @@ export function designThemeClassName(theme: DesignTheme): string {
   if (theme === "nova") return " ts-design-nova";
   if (theme === "pulse") return " ts-design-pulse";
   if (theme === "ide") return " ts-design-ide";
-  return "";
+  return " ts-design-standard";
 }
 
 export function designThemeLabel(theme: DesignTheme, t: (key: string) => string): string {

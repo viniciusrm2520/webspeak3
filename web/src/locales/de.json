@@ -299,7 +299,7 @@
   "options.section.design": "Design",
   "design.subtitle": "Wähle das Erscheinungsbild der Anwendung.",
   "design.theme.standard": "Standard",
-  "design.theme.standard.desc": "Das originale WebSpeak3-Design.",
+  "design.theme.standard.desc": "Serverleiste, Kanalliste und Karten für alle in deinem Kanal.",
   "design.theme.nova": "Nova",
   "design.theme.nova.desc": "Moderneres, dunkles Design mit abgerundeten Elementen.",
   "design.theme.pulse": "Pulse",

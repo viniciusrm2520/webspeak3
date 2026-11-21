@@ -1,0 +1,627 @@
+/* Standard theme: dark, voice-first layout. Desktop gets a server rail,
+   the channel list with the own voice bar at its foot, the current channel
+   (header, member cards, chat) in the middle and the info panel on the right.
+   Mobile (.ts-mobile) keeps the shared mobile layout and only takes the
+   palette and shapes.
+
+   Variable blocks are wrapped in :where() like the base ones in App.css, so
+   a custom theme built on Standard still overrides them. */
+
+:where(.ts-app.ts-design-standard) {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --rail: #eceef2;
+  --raised: #eef0f3;
+  --bg-toolbar-1: #ffffff;
+  --bg-toolbar-2: #ffffff;
+  --border: #d5d9e0;
+  --border-soft: #e3e6eb;
+  --text: #14171c;
+  --text-muted: #5b6270;
+  --accent: #0f766e;
+  --accent-fg: #ffffff;
+  --success: #15803d;
+  --danger-bg: #fde8e8;
+  --danger-text: #9b1c1c;
+  --input-bg: #ffffff;
+  --input-text: #14171c;
+  --button-bg-1: #ffffff;
+  --button-bg-2: #ffffff;
+  --button-bg-hover-1: #eef0f3;
+  --button-bg-hover-2: #eef0f3;
+  --row-hover: #eef0f3;
+  --row-selected: #e2f3f1;
+  --client-text: #14171c;
+  --self-text: #0f766e;
+  --log-bg: #eceef2;
+  --log-text: #3d4450;
+  --log-error: #b42318;
+  --alpha-badge: #a15c07;
+  font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:where(.ts-app.ts-design-standard.ts-theme-dark) {
+  --bg: #0f1115;
+  --panel: #15181e;
+  --rail: #0a0b0e;
+  --raised: #1c1f26;
+  --bg-toolbar-1: #15181e;
+  --bg-toolbar-2: #15181e;
+  --border: #2a2f39;
+  --border-soft: #1f232b;
+  --text: #e6e8ec;
+  --text-muted: #9aa1ad;
+  --accent: #2dd4bf;
+  --accent-fg: #0a0b0e;
+  --success: #34d399;
+  --danger-bg: #3b1d22;
+  --danger-text: #fca5a5;
+  --input-bg: #0f1115;
+  --input-text: #e6e8ec;
+  --button-bg-1: #1c1f26;
+  --button-bg-2: #1c1f26;
+  --button-bg-hover-1: #262a33;
+  --button-bg-hover-2: #262a33;
+  --row-hover: #1c1f26;
+  --row-selected: #22262e;
+  --client-text: #e6e8ec;
+  --self-text: #2dd4bf;
+  --log-bg: #0a0b0e;
+  --log-text: #b4b9c3;
+  --log-error: #f2867a;
+  --alpha-badge: #e0a23c;
+}
+
+/* ---------- Shapes shared by desktop and mobile ---------- */
+
+.ts-app.ts-design-standard :is(select, input[type="text"], input[type="password"], input[type="search"], input[type="number"], textarea) {
+  border-radius: 8px;
+}
+
+.ts-app.ts-design-standard .ts-icon-button,
+.ts-app.ts-design-standard .ts-dialog button:not(.ts-options-sidebar-item),
+.ts-app.ts-design-standard .ts-chat-input-row button {
+  border-radius: 8px;
+  border-color: var(--border-soft);
+  background: var(--button-bg-1);
+}
+
+.ts-app.ts-design-standard .ts-icon-button:hover:not(:disabled),
+.ts-app.ts-design-standard .ts-dialog button:not(.ts-options-sidebar-item):hover:not(:disabled) {
+  background: var(--button-bg-hover-1);
+}
+
+.ts-app.ts-design-standard .ts-options-sidebar-item {
+  border-radius: 8px;
+}
+
+.ts-app.ts-design-standard .ts-options-sidebar-item-active {
+  background: var(--row-selected);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ts-app.ts-design-standard .ts-dialog {
+  background: var(--panel);
+  border-color: var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.ts-app.ts-design-standard .ts-dialog-backdrop {
+  background: rgba(5, 6, 8, 0.6);
+}
+
+.ts-app.ts-design-standard .ts-menu {
+  background: var(--panel);
+  border-color: var(--border-soft);
+  border-radius: 10px;
+  padding: 0.35rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.ts-app.ts-design-standard .ts-menu-item {
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 13px;
+}
+
+.ts-app.ts-design-standard .ts-menubar {
+  background: var(--rail);
+  border-bottom-color: var(--border-soft);
+  font-size: 13px;
+  padding: 0.3rem 0.9rem;
+}
+
+.ts-app.ts-design-standard .ts-menubar-item-active {
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+}
+
+.ts-app.ts-design-standard .ts-toolbar {
+  background: var(--rail);
+  border-bottom-color: var(--border-soft);
+  padding: 0.35rem 0.9rem 0.5rem;
+}
+
+.ts-app.ts-design-standard .ts-row {
+  border-radius: 6px;
+  padding: 3px 8px;
+  line-height: 22px;
+}
+
+.ts-app.ts-design-standard .ts-row:hover {
+  background: var(--row-hover);
+}
+
+.ts-app.ts-design-standard .ts-row-selected,
+.ts-app.ts-design-standard .ts-row-selected:hover {
+  background: var(--row-selected);
+  outline: none;
+}
+
+.ts-app.ts-design-standard .ts-client-row.ts-talking {
+  outline: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.ts-app.ts-design-standard .ts-log,
+.ts-app.ts-design-standard .ts-news-ticker {
+  background: var(--log-bg);
+  border-top-color: var(--border-soft);
+}
+
+/* ---------- Desktop layout ---------- */
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-body {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "rail tree handle chat side";
+}
+
+/* Flatten the upper/lower split so its children sit straight in the grid. */
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-upper {
+  display: contents;
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-resize-handle-horizontal {
+  display: none;
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-resize-handle-vertical {
+  grid-area: handle;
+  width: 3px;
+  background: var(--border-soft);
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-resize-handle-vertical:hover {
+  background: var(--accent);
+}
+
+/* Nothing to show on the right while disconnected: give the chat the room. */
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-body:has(.ts-side-panel:empty) {
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  grid-template-areas: "rail tree handle chat";
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-side-panel:empty {
+  display: none;
+}
+
+@container (max-width: 1100px) {
+  .ts-app.ts-design-standard:not(.ts-mobile) .ts-body {
+    grid-template-columns: auto auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "rail tree handle side"
+      "rail tree handle chat";
+  }
+
+  .ts-app.ts-design-standard:not(.ts-mobile) .ts-side-panel {
+    max-height: 200px;
+    border-left: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+}
+
+/* Server rail */
+
+.ts-app.ts-design-standard .gts-connection-rail {
+  grid-area: rail;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 68px;
+  height: auto;
+  min-height: 0;
+  padding: 14px 0;
+  box-sizing: border-box;
+  background: var(--rail);
+  border-bottom: 0;
+  border-right: 1px solid var(--border-soft);
+  overflow-y: auto;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab {
+  position: relative;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 23px;
+  background: var(--raised);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 15px;
+  transition: border-radius 0.15s ease, background-color 0.15s ease;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab:hover {
+  border-radius: 14px;
+  color: var(--text);
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab-active {
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab-connecting {
+  opacity: 0.6;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab-label {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab-close {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+  font-size: 13px;
+  line-height: 18px;
+  opacity: 0;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail .gts-connection-tab:hover .gts-connection-tab-close {
+  opacity: 1;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail-new {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ts-app.ts-design-standard .gts-connection-rail-new:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Channel list column */
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-tree-panel {
+  grid-area: tree;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 280px;
+  padding: 0;
+  background: var(--panel);
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-tree-panel > .ts-server-row {
+  flex: 0 0 auto;
+  margin: 10px 10px 4px;
+  width: auto;
+  padding: 8px 10px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-tree-search {
+  margin: 4px 10px 8px;
+  width: auto;
+  box-sizing: border-box;
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-tree-panel > .ts-tree-list {
+  padding: 0 10px;
+}
+
+/* Own voice bar: pinned to the bottom of the channel list. */
+.ts-app.ts-design-standard .ts-self-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--rail);
+  border-top: 1px solid var(--border-soft);
+}
+
+.ts-app.ts-design-standard .ts-self-bar-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  color: var(--accent-fg);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.ts-app.ts-design-standard .ts-self-bar-avatar .ts-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ts-app.ts-design-standard .ts-self-bar-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.ts-app.ts-design-standard .ts-self-bar-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ts-app.ts-design-standard .ts-self-bar-btn:hover {
+  background: var(--button-bg-hover-1);
+}
+
+.ts-app.ts-design-standard .ts-self-bar-btn-off {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.ts-app.ts-design-standard .ts-self-bar-btn .ts-mobile-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Info column */
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-side-panel {
+  grid-area: side;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--border-soft);
+}
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-banner-panel {
+  flex: 0 0 auto;
+  max-height: 140px;
+  border-bottom-color: var(--border-soft);
+}
+
+.ts-app.ts-design-standard .ts-info-panel {
+  background: transparent;
+  padding: 1rem 1.1rem;
+}
+
+/* Current channel column */
+
+.ts-app.ts-design-standard:not(.ts-mobile) .ts-chat-panel {
+  grid-area: chat;
+  background: var(--bg);
+}
+
+.ts-app.ts-design-standard .ts-channel-header {
+  order: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.ts-app.ts-design-standard .ts-channel-header-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ts-app.ts-design-standard .ts-channel-header-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ts-app.ts-design-standard .ts-channel-header-leave {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ts-app.ts-design-standard .ts-channel-header-leave .ts-mobile-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Member cards */
+
+.ts-app.ts-design-standard .ts-speaking-now {
+  order: 1;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+  transition: box-shadow 0.15s ease;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-tile-active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0a0b0e;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-avatar .ts-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Chat */
+
+.ts-app.ts-design-standard .ts-chat-tabs {
+  order: 2;
+  gap: 4px;
+  padding: 0 18px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.ts-app.ts-design-standard .ts-chat-tab {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 10px 10px;
+  font-size: 13px;
+}
+
+.ts-app.ts-design-standard .ts-chat-tab-active {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.ts-app.ts-design-standard .ts-chat-messages {
+  order: 3;
+  padding: 12px 22px;
+}
+
+.ts-app.ts-design-standard .ts-chat-line {
+  padding: 3px 0;
+  line-height: 1.45;
+}
+
+.ts-app.ts-design-standard .ts-chat-from {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ts-app.ts-design-standard .ts-chat-line-self .ts-chat-from {
+  color: var(--accent);
+}
+
+.ts-app.ts-design-standard .ts-chat-input-row {
+  order: 4;
+  gap: 8px;
+  padding: 12px 22px 16px;
+  border-top: 0;
+}
+
+.ts-app.ts-design-standard .ts-chat-input-row textarea {
+  padding: 0.65rem 0.8rem;
+  border-color: var(--border-soft);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 14px;
+}
+
+.ts-app.ts-design-standard .ts-chat-input-row button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0 1.1rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ts-app.ts-design-standard .ts-chat-input-row button:disabled {
+  opacity: 0.45;
+}
