@@ -4341,6 +4341,15 @@ function AppInner() {
   // Standard puts the sender on its own line, so no "Name:" colon there.
   const chatColon = standardLayout ? "" : ":";
   const ownChannelCount = ownClient ? treeClients.filter((c) => c.channel === ownClient.channel).length : 0;
+  // Standard desktop plays a stream inside the streamer's member card when they
+  // share your channel; the floating panel is then only kept for errors.
+  const watchInCard =
+    standardLayout &&
+    !streamError &&
+    !!watchedStream &&
+    !!ownClient &&
+    clients.find((c) => c.id === watchedStream.clientId)?.channel === ownClient.channel;
+
   const micLabel = !micOn ? t("toolbar.micEnable") : inputMuted ? t("toolbar.micUnmute") : t("toolbar.micMute");
   const streamLabel = DEMO_MODE
     ? t("publish.demoUnavailable")
@@ -5856,7 +5865,7 @@ function AppInner() {
           {publishError && <div className="ts-stream-panel-error">{publishError}</div>}
         </div>
       )}
-      {watchedStream && (
+      {watchedStream && !watchInCard && (
         <div className="ts-stream-panel">
           <div className="ts-stream-panel-header">
             <span className="ts-stream-panel-title">
@@ -6484,6 +6493,19 @@ function AppInner() {
               serverGroups={designTheme === "ide" ? serverGroups : undefined}
               selectedClientId={selected?.type === "client" ? selected.id : null}
               showStatus={standardLayout}
+              streams={
+                standardLayout
+                  ? {
+                      canWatch: (id) => !!streamInfos[id],
+                      watchingClientId: watchedStream?.clientId ?? null,
+                      media: streamMedia,
+                      selfLive: publishState === "live",
+                      selfPreview: publishState === "live" ? (publisherRef.current?.previewStream ?? null) : null,
+                      onWatch: handleWatchStream,
+                      onStopWatching: handleStopWatchingStream,
+                    }
+                  : undefined
+              }
               onSelect={(id) => handleSelectItem({ type: "client", id })}
               onOpenPrivateChat={handleOpenPrivateChat}
               onContextMenu={handleClientContextMenu}

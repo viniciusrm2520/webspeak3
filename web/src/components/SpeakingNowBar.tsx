@@ -1,8 +1,34 @@
 import type { ClientInfo, GroupEntry } from "../app/model";
+import { useEffect, useRef } from "react";
 import { groupBadgeColor } from "../app/shared";
 import { useT } from "../i18n";
 import { TalkLamp } from "./ChannelTree";
 import { AvatarTile } from "./ui";
+
+/** Live video inside a card: a stream being watched, or your own preview. */
+function TileVideo({ stream, own }: { stream: MediaStream; own: boolean }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream;
+  }, [stream]);
+  // Muted so autoplay is never blocked; controls let the viewer unmute or go
+  // fullscreen. Your own preview never plays its audio back to you.
+  return <video ref={ref} className="ts-speaking-now-video" autoPlay playsInline muted controls={!own} />;
+}
+
+/** Standard layout: streams on the member cards. */
+export interface TileStreams {
+  /** Whether the stream of this client can be joined (its id is known). */
+  canWatch: (clientId: number) => boolean;
+  watchingClientId: number | null;
+  /** Media of the stream being watched, once it arrived. */
+  media: MediaStream | null;
+  /** You are broadcasting, and the capture to preview. */
+  selfLive: boolean;
+  selfPreview: MediaStream | null;
+  onWatch: (clientId: number) => void;
+  onStopWatching: () => void;
+}
 
 /** Pulse-theme-only: a row of avatar tiles for everyone in the player's current
  *  channel, with a highlighted ring on whoever is currently talking - the
@@ -17,6 +43,7 @@ export function SpeakingNowBar({
   serverGroups,
   selectedClientId,
   showStatus,
+  streams,
   onSelect,
   onOpenPrivateChat,
   onContextMenu,
@@ -30,6 +57,8 @@ export function SpeakingNowBar({
   selectedClientId: number | null;
   /** Standard layout: a status line (talking, away, muted) under the name. */
   showStatus?: boolean;
+  /** Standard layout: LIVE badge, a Watch button and the video in the card. */
+  streams?: TileStreams;
   onSelect: (clientId: number) => void;
   onOpenPrivateChat: (clientId: number, clientName: string) => void;
   onContextMenu: (e: React.MouseEvent, clientId: number, clientName: string, isSelf: boolean) => void;
@@ -42,24 +71,56 @@ export function SpeakingNowBar({
 
   return (
     <div className="ts-speaking-now">
-      {channelClients.map((c) => (
+      {channelClients.map((c) => {
+        const isSelf = c.id === ownClientId;
+        const live = !!streams && (isSelf ? streams.selfLive : !!c.isStreaming);
+        const video =
+          streams && isSelf && streams.selfLive
+            ? streams.selfPreview
+            : streams && streams.watchingClientId === c.id
+              ? streams.media
+              : null;
+        const watching = !!streams && !isSelf && streams.watchingClientId === c.id;
+        return (
         <div
           key={c.id}
           className={`ts-speaking-now-tile${talkers.has(c.id) ? " ts-speaking-now-tile-active" : ""}${
             c.id === selectedClientId ? " ts-speaking-now-tile-selected" : ""
-          }`}
+          }${live ? " ts-speaking-now-tile-live" : ""}${video || watching ? " ts-speaking-now-tile-video" : ""}`}
           title={c.name}
           onClick={() => onSelect(c.id)}
           onDoubleClick={c.id === ownClientId ? undefined : () => onOpenPrivateChat(c.id, c.name)}
           onContextMenu={(e) => onContextMenu(e, c.id, c.name, c.id === ownClientId)}
         >
-          <AvatarTile client={c} images={images} className="ts-speaking-now-avatar" isSelf={c.id === ownClientId} />
+          {video ? (
+            <TileVideo stream={video} own={isSelf} />
+          ) : watching ? (
+            <span className="ts-speaking-now-video ts-speaking-now-video-wait">{t("stream.state.connecting")}</span>
+          ) : (
+            <AvatarTile client={c} images={images} className="ts-speaking-now-avatar" isSelf={isSelf} />
+          )}
+          {live && <span className="ts-speaking-now-live">{t("stream.live")}</span>}
+          {watching && (
+            <button
+              className="ts-speaking-now-stop"
+              title={t("stream.stop")}
+              aria-label={t("stream.stop")}
+              onClick={(e) => {
+                e.stopPropagation();
+                streams.onStopWatching();
+              }}
+            >
+              ✕
+            </button>
+          )}
           {serverGroups === undefined ? (
             <>
               <span className="ts-speaking-now-name">{c.name}</span>
               {showStatus && (
                 <span className="ts-speaking-now-state">
-                  {talkers.has(c.id)
+                  {live
+                    ? t("tree.streaming")
+                    : talkers.has(c.id)
                     ? t("tree.talking")
                     : c.away
                       ? t("tree.away")
@@ -69,6 +130,17 @@ export function SpeakingNowBar({
                           ? t("tree.micMuted")
                           : " "}
                 </span>
+              )}
+              {live && !isSelf && !watching && streams.canWatch(c.id) && (
+                <button
+                  className="ts-speaking-now-watch"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    streams.onWatch(c.id);
+                  }}
+                >
+                  ▶ {t("clientContext.watchStream")}
+                </button>
               )}
             </>
           ) : (
@@ -109,7 +181,8 @@ export function SpeakingNowBar({
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
