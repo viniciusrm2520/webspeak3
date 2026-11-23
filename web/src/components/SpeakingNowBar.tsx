@@ -26,6 +26,8 @@ export interface TileStreams {
   /** You are broadcasting, and the capture to preview. */
   selfLive: boolean;
   selfPreview: MediaStream | null;
+  /** People watching your broadcast, shown as your card's status. */
+  selfViewers: number;
   onWatch: (clientId: number) => void;
   onStopWatching: () => void;
 }
@@ -118,7 +120,9 @@ export function SpeakingNowBar({
               <span className="ts-speaking-now-name">{c.name}</span>
               {showStatus && (
                 <span className="ts-speaking-now-state">
-                  {live
+                  {live && isSelf
+                    ? t("publish.viewers", { count: String(streams.selfViewers) })
+                    : live
                     ? t("tree.streaming")
                     : talkers.has(c.id)
                     ? t("tree.talking")

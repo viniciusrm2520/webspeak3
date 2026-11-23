@@ -4353,6 +4353,14 @@ function AppInner() {
     !!ownClient &&
     clients.find((c) => c.id === watchedStream.clientId)?.channel === ownClient.channel;
 
+  // Standard desktop shows your broadcast on your own card (preview, LIVE,
+  // viewer count), so the floating panel only appears when there is
+  // something to act on: access requests or an error.
+  const publishPanelNeeded =
+    publishState !== "idle" &&
+    publishState !== "stopped" &&
+    (!standardLayout || publishPending.length > 0 || !!publishError);
+
   const micLabel = !micOn ? t("toolbar.micEnable") : inputMuted ? t("toolbar.micUnmute") : t("toolbar.micMute");
   const streamLabel = DEMO_MODE
     ? t("publish.demoUnavailable")
@@ -5818,9 +5826,9 @@ function AppInner() {
           onCancel={() => setStreamSettingsOpen(false)}
         />
       )}
-      {(watchedStream || (publishState !== "idle" && publishState !== "stopped")) && (
+      {((watchedStream && !watchInCard) || publishPanelNeeded) && (
       <div className="ts-stream-panels">
-      {publishState !== "idle" && publishState !== "stopped" && (
+      {publishPanelNeeded && (
         <div className="ts-stream-panel ts-stream-panel-publish">
           <div className="ts-stream-panel-header">
             <span className="ts-stream-panel-title">
@@ -5839,8 +5847,9 @@ function AppInner() {
               ✕
             </button>
           </div>
-          {/* muted: this is our own capture playing back locally */}
-          <video ref={publishPreviewRef} autoPlay playsInline muted />
+          {/* muted: this is our own capture playing back locally; Standard
+              already shows it on your own card */}
+          {!standardLayout && <video ref={publishPreviewRef} autoPlay playsInline muted />}
           {publishPending.map(([clid, message]) => (
             <div className="ts-stream-request" key={clid}>
               <span className="ts-stream-request-who">
@@ -6504,6 +6513,7 @@ function AppInner() {
                       media: streamMedia,
                       selfLive: publishState === "live",
                       selfPreview: publishState === "live" ? (publisherRef.current?.previewStream ?? null) : null,
+                      selfViewers: publishViewers.length,
                       onWatch: handleWatchStream,
                       onStopWatching: handleStopWatchingStream,
                     }
