@@ -1,5 +1,6 @@
 import type { ClientInfo } from "./model";
 import type { PttBinding } from "./prefs";
+import type { VadMode } from "../voice";
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -147,6 +148,8 @@ export interface AudioSettings {
   onPushToTalkChange: (on: boolean) => void;
   continuous: boolean;
   onContinuousChange: (on: boolean) => void;
+  vadMode: VadMode;
+  onVadModeChange: (mode: VadMode) => void;
   typingAttenuation: boolean;
   onTypingAttenuationChange: (on: boolean) => void;
   pttBinding: PttBinding | null;

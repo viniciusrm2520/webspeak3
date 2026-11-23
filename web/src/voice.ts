@@ -5,6 +5,11 @@
 // for the server -> speakers direction (already decoded/mixed for us).
 
 import type { Aec3Instance } from "./aec3";
+import { SpeechDetector } from "./vad";
+
+/** How voice activation decides: volume threshold only, or volume AND speech
+ *  detection ("hybrid", like TeamSpeak's own Hybrid mode). */
+export type VadMode = "volume" | "hybrid";
 
 export const SAMPLE_RATE = 48000;
 export const FRAME_SAMPLES = 960; // 20ms @ 48kHz
@@ -93,6 +98,13 @@ export class MicCapture {
    *  voice activation and is quieter while talking. See noteTyping(). */
   typingAttenuation = false;
   private typingUntil = 0;
+  /** Voice activation by volume alone, or "hybrid": volume AND speech
+   *  detection (TeamSpeak's Hybrid mode). See setVadMode(). */
+  private vadMode: VadMode = "volume";
+  private speechDetector: SpeechDetector | null = null;
+  private speechLoading = false;
+  private speechUntil = 0;
+  private disposed = false;
 
   constructor(context: AudioContext, options: MicCaptureOptions) {
     this.context = context;
@@ -162,7 +174,14 @@ export class MicCapture {
 
       const now = this.context.currentTime;
       if (rms >= this.threshold) this.activeUntil = now + this.hangoverSeconds;
-      const talking = this.pushToTalk ? this.pttPressed : this.continuous || now < this.activeUntil;
+      let voiced = now < this.activeUntil;
+      // Hybrid: loud enough is not enough, it also has to sound like speech.
+      // Until the detector has loaded this behaves like plain volume mode.
+      if (this.vadMode === "hybrid" && this.speechDetector && !this.pushToTalk && !this.continuous) {
+        if (this.speechDetector.process(input, this.threshold)) this.speechUntil = now + this.hangoverSeconds;
+        voiced = voiced && now < this.speechUntil;
+      }
+      const talking = this.pushToTalk ? this.pttPressed : this.continuous || voiced;
       // Shared audio (music, a video) has its own pauses; keep sending throughout.
       const shouldBeActive = this.extra !== null || talking;
       if (shouldBeActive !== this.active) {
@@ -251,7 +270,32 @@ export class MicCapture {
     }
   }
 
+  /** Switches voice activation between volume only and Hybrid. The speech
+   *  detector (a small WASM module) is loaded on first use. */
+  setVadMode(mode: VadMode): void {
+    this.vadMode = mode;
+    if (mode === "volume") {
+      this.speechDetector?.free();
+      this.speechDetector = null;
+      return;
+    }
+    if (this.speechDetector || this.speechLoading || this.disposed) return;
+    this.speechLoading = true;
+    SpeechDetector.create(this.context.sampleRate)
+      .then((detector) => {
+        if (this.disposed || this.vadMode !== "hybrid") detector.free();
+        else this.speechDetector = detector;
+      })
+      .catch((err: unknown) => console.warn("Speech detection unavailable, using volume only:", err))
+      .finally(() => {
+        this.speechLoading = false;
+      });
+  }
+
   stop(): void {
+    this.disposed = true;
+    this.speechDetector?.free();
+    this.speechDetector = null;
     if (this.processor && this.monitorTarget) this.processor.disconnect(this.monitorTarget);
     this.monitorTarget = null;
     this.processor?.disconnect();

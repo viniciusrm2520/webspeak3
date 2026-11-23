@@ -61,6 +61,7 @@ import {
   type Contact,
   CONTACTS_KEY,
   CONTINUOUS_KEY,
+  VAD_MODE_KEY,
   type CustomTheme,
   DESIGN_SELECTION_KEY,
   DESIGN_THEME_KEY,
@@ -244,6 +245,7 @@ import {
   MicCapture,
   pickAudioOutputDevice,
   SAMPLE_RATE,
+  type VadMode,
 } from "./voice";
 
 /** Gateway serverLog kind -> Options -> Meldungen key. The server doesn't say who did it, so "by other". */
@@ -635,6 +637,11 @@ function AppInner() {
   // Only matters while pushToTalk is off: send all the time instead of voice activation.
   const [continuous, setContinuous] = useState(() => loadBoolPref(CONTINUOUS_KEY, false));
   const continuousRef = useRef(continuous);
+  // Voice activation by volume, or Hybrid (volume + speech detection).
+  const [vadMode, setVadMode] = useState<VadMode>(() =>
+    localStorage.getItem(VAD_MODE_KEY) === "hybrid" ? "hybrid" : "volume",
+  );
+  const vadModeRef = useRef(vadMode);
   const [typingAttenuation, setTypingAttenuation] = useState(() => loadBoolPref(TYPING_ATTENUATION_KEY, false));
   const typingAttenuationRef = useRef(typingAttenuation);
   const [pttBinding, setPttBinding] = useState<PttBinding | null>(loadPttBinding);
@@ -908,6 +915,12 @@ function AppInner() {
     if (micCaptureRef.current) micCaptureRef.current.continuous = continuous;
     localStorage.setItem(CONTINUOUS_KEY, continuous ? "1" : "0");
   }, [continuous]);
+
+  useEffect(() => {
+    vadModeRef.current = vadMode;
+    micCaptureRef.current?.setVadMode(vadMode);
+    localStorage.setItem(VAD_MODE_KEY, vadMode);
+  }, [vadMode]);
 
   useEffect(() => {
     typingAttenuationRef.current = typingAttenuation;
@@ -3060,6 +3073,7 @@ function AppInner() {
       micCaptureRef.current = mic;
       mic.pushToTalk = pushToTalkRef.current;
       mic.continuous = continuousRef.current;
+      mic.setVadMode(vadModeRef.current);
       mic.typingAttenuation = typingAttenuationRef.current;
       mic.pttPressed = pttPressedRef.current;
       mic.setExtraAudio(tabAudioRef.current);
@@ -5589,6 +5603,8 @@ function AppInner() {
             pushToTalk,
             continuous,
             onContinuousChange: setContinuous,
+            vadMode,
+            onVadModeChange: setVadMode,
             typingAttenuation,
             onTypingAttenuationChange: setTypingAttenuation,
             onPushToTalkChange: setPushToTalk,

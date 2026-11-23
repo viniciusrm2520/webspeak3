@@ -105,6 +105,7 @@ export const GLOBAL_PTT_KEY = "webspeak3:global-ptt-helper";
 /** Loopback port of ptt-helper (the global push-to-talk companion app). */
 export const PTT_HELPER_PORT = 37373;
 export const CONTINUOUS_KEY = "webspeak3:continuous-transmission";
+export const VAD_MODE_KEY = "webspeak3:vad-mode";
 export const TYPING_ATTENUATION_KEY = "webspeak3:typing-attenuation";
 export const PTT_BINDING_KEY = "webspeak3:ptt-key";
 /** Key that toggles the microphone mute (press once to mute, again to unmute). */

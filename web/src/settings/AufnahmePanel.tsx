@@ -1,5 +1,6 @@
 import type { AudioSettings } from "../app/shared";
 import { MicLevelBar, PttKeyButton } from "../components/ui";
+import type { VadMode } from "../voice";
 import { useT } from "../i18n";
 
 export function AufnahmePanel({ audio }: { audio: AudioSettings }) {
@@ -72,6 +73,18 @@ export function AufnahmePanel({ audio }: { audio: AudioSettings }) {
               />
               {t("recording.voiceActivation")}
             </label>
+            {!audio.pushToTalk && !audio.continuous && (
+              <>
+                <label className="ts-options-field-row">
+                  {t("recording.vadMode")}
+                  <select value={audio.vadMode} onChange={(e) => audio.onVadModeChange(e.target.value as VadMode)}>
+                    <option value="volume">{t("recording.vadMode.volume")}</option>
+                    <option value="hybrid">{t("recording.vadMode.hybrid")}</option>
+                  </select>
+                </label>
+                <p className="ts-options-hint">{t("recording.vadMode.hint")}</p>
+              </>
+            )}
             <div className="ts-options-level-wrap">
               <MicLevelBar levelRef={audio.micLevelRef} active={audio.micOn} />
               <input
