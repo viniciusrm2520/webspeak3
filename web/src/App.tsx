@@ -104,6 +104,8 @@ import {
   PTT_BINDING_KEY,
   type PttBinding,
   PUSH_TO_TALK_KEY,
+  GLOBAL_PTT_KEY,
+  PTT_HELPER_PORT,
   randomId,
   resolveDesignThemeBase,
   saveAwayPresets,
@@ -131,6 +133,7 @@ import {
   ftJoinPath,
   lastChannelClickBySession,
   OPTIONS_SECTIONS,
+  type PttHelperStatus,
 } from "./app/shared";
 import {
   appendChatLog,
@@ -634,6 +637,9 @@ function AppInner() {
   const typingAttenuationRef = useRef(typingAttenuation);
   const [pttBinding, setPttBinding] = useState<PttBinding | null>(loadPttBinding);
   const [pttPressed, setPttPressed] = useState(false);
+  // Push-to-talk key watched system-wide by the ptt-helper companion app.
+  const [globalPtt, setGlobalPtt] = useState(() => loadBoolPref(GLOBAL_PTT_KEY, false));
+  const [pttHelperStatus, setPttHelperStatus] = useState<PttHelperStatus>("off");
   // Read when a new MicCapture is created, which happens outside render.
   const pushToTalkRef = useRef(pushToTalk);
   const pttPressedRef = useRef(false);
@@ -885,6 +891,10 @@ function AppInner() {
   }, [pushToTalk]);
 
   useEffect(() => {
+    localStorage.setItem(GLOBAL_PTT_KEY, globalPtt ? "1" : "0");
+  }, [globalPtt]);
+
+  useEffect(() => {
     continuousRef.current = continuous;
     if (micCaptureRef.current) micCaptureRef.current.continuous = continuous;
     localStorage.setItem(CONTINUOUS_KEY, continuous ? "1" : "0");
@@ -954,6 +964,52 @@ function AppInner() {
       release();
     };
   }, [pushToTalk, pttBinding]);
+
+  // ptt-helper: the browser never sees keys pressed in another program, so a
+  // small local app watches the push-to-talk key system-wide and reports its
+  // edges over ws://127.0.0.1. Retries every few seconds while it isn't running.
+  useEffect(() => {
+    if (!pushToTalk || !globalPtt || !pttBinding) {
+      setPttHelperStatus("off");
+      return;
+    }
+    let ws: WebSocket | null = null;
+    let retry: number | undefined;
+    let stopped = false;
+    const connect = () => {
+      try {
+        ws = new WebSocket(`ws://127.0.0.1:${PTT_HELPER_PORT}`);
+      } catch {
+        setPttHelperStatus("missing");
+        retry = window.setTimeout(connect, 5000);
+        return;
+      }
+      ws.onopen = () => ws?.send(JSON.stringify({ type: "bind", code: pttBinding.code }));
+      ws.onmessage = (e) => {
+        let msg: { type?: string; ok?: boolean; pressed?: boolean };
+        try {
+          msg = JSON.parse(String(e.data));
+        } catch {
+          return;
+        }
+        if (msg.type === "bound") setPttHelperStatus(msg.ok ? "connected" : "unsupported");
+        else if (msg.type === "ptt") setPttPressed(!!msg.pressed);
+      };
+      ws.onclose = () => {
+        if (stopped) return;
+        // Never leave the mic open because the helper went away mid-press.
+        setPttPressed(false);
+        setPttHelperStatus("missing");
+        retry = window.setTimeout(connect, 5000);
+      };
+    };
+    connect();
+    return () => {
+      stopped = true;
+      window.clearTimeout(retry);
+      ws?.close();
+    };
+  }, [pushToTalk, globalPtt, pttBinding]);
 
   useEffect(() => {
     audioPlayerRef.current?.setVolume(playbackVolume);
@@ -5465,6 +5521,9 @@ function AppInner() {
             onPushToTalkChange: setPushToTalk,
             pttBinding,
             onPttBindingChange: setPttBinding,
+            globalPtt,
+            onGlobalPttChange: setGlobalPtt,
+            pttHelperStatus,
             noiseSuppressionEnabled,
             onToggleNoiseSuppression: handleToggleNoiseSuppression,
             echoCancellationEnabled,

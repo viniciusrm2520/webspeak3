@@ -112,6 +112,9 @@ export const OPTIONS_SECTIONS = [
   { id: "meldungen", icon: "ℹ️" },
 ] as const;
 
+/** ptt-helper connection: off (not wanted), missing (not running), or bound. */
+export type PttHelperStatus = "off" | "missing" | "connected" | "unsupported";
+
 export interface AudioSettings {
   outputDevices: MediaDeviceInfo[];
   outputDeviceId: string;
@@ -146,6 +149,9 @@ export interface AudioSettings {
   onTypingAttenuationChange: (on: boolean) => void;
   pttBinding: PttBinding | null;
   onPttBindingChange: (binding: PttBinding) => void;
+  globalPtt: boolean;
+  onGlobalPttChange: (on: boolean) => void;
+  pttHelperStatus: PttHelperStatus;
   noiseSuppressionEnabled: boolean;
   onToggleNoiseSuppression: () => void;
   echoCancellationEnabled: boolean;

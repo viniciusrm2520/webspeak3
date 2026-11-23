@@ -1,0 +1,15 @@
+[package]
+name = "ptt-helper"
+version = "0.1.0"
+edition = "2021"
+description = "Global push-to-talk key for the WebSpeak3 web client"
+license = "MIT"
+
+[dependencies]
+rdev = "0.5"
+tungstenite = "0.24"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

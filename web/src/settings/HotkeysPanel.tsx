@@ -19,6 +19,25 @@ export function HotkeysPanel({ audio }: { audio: AudioSettings }) {
           <PttKeyButton binding={audio.pttBinding} onChange={audio.onPttBindingChange} />
         </div>
         <p className="ts-options-hint">{t("recording.pttHint")}</p>
+        <label className="ts-options-checkbox">
+          <input
+            type="checkbox"
+            checked={audio.globalPtt}
+            disabled={!audio.pushToTalk}
+            onChange={(e) => audio.onGlobalPttChange(e.target.checked)}
+          />
+          {t("hotkeys.globalHelper")}
+        </label>
+        {audio.pushToTalk && audio.globalPtt && (
+          <p className={`ts-ptt-helper-status ts-ptt-helper-${audio.pttHelperStatus}`} role="status">
+            {audio.pttHelperStatus === "connected"
+              ? t("hotkeys.globalHelper.connected")
+              : audio.pttHelperStatus === "unsupported"
+                ? t("hotkeys.globalHelper.unsupported")
+                : t("hotkeys.globalHelper.missing")}
+          </p>
+        )}
+        <p className="ts-options-hint">{t("hotkeys.globalHelper.hint")}</p>
       </fieldset>
       <fieldset className="ts-options-fieldset">
         <legend>{t("hotkeys.shortcuts")}</legend>

@@ -101,6 +101,9 @@ export const OTHER_MIC_CLICKS_KEY = "webspeak3:other-mic-clicks";
 export const AEC3_ENABLED_KEY = "webspeak3:aec3-enabled";
 export const VAD_HANGOVER_KEY = "webspeak3:vad-hangover";
 export const PUSH_TO_TALK_KEY = "webspeak3:push-to-talk";
+export const GLOBAL_PTT_KEY = "webspeak3:global-ptt-helper";
+/** Loopback port of ptt-helper (the global push-to-talk companion app). */
+export const PTT_HELPER_PORT = 37373;
 export const CONTINUOUS_KEY = "webspeak3:continuous-transmission";
 export const TYPING_ATTENUATION_KEY = "webspeak3:typing-attenuation";
 export const PTT_BINDING_KEY = "webspeak3:ptt-key";
