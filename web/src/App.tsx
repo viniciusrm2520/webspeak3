@@ -6310,6 +6310,15 @@ function AppInner() {
                       </button>
                     )}
                     <button
+                      className={`ts-self-bar-btn${isAway ? " ts-self-bar-btn-away" : ""}`}
+                      onClick={() => sendAway(!isAway, "")}
+                      title={isAway ? t("toolbar.backOnline") : t("toolbar.setAway")}
+                      aria-label={isAway ? t("toolbar.backOnline") : t("toolbar.setAway")}
+                      aria-pressed={isAway}
+                    >
+                      <MobileIcon name="moon" />
+                    </button>
+                    <button
                       className={`ts-self-bar-btn${micOn && !inputMuted ? "" : " ts-self-bar-btn-off"}`}
                       onClick={handleToggleMic}
                       title={micLabel}

@@ -484,7 +484,7 @@
   margin-top: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px 12px;
   background: var(--rail);
   border-top: 1px solid var(--border-soft);
@@ -541,6 +541,12 @@
 .ts-app.ts-design-standard .ts-self-bar-btn-off {
   background: var(--danger-bg);
   color: var(--danger-text);
+}
+
+/* Away: amber, so it reads as a status rather than an error like a muted mic. */
+.ts-app.ts-design-standard .ts-self-bar-btn-away {
+  background: color-mix(in srgb, var(--alpha-badge) 22%, transparent);
+  color: var(--alpha-badge);
 }
 
 .ts-app.ts-design-standard .ts-self-bar-btn .ts-mobile-icon {
