@@ -447,7 +447,10 @@ function AppInner() {
   const [serverIconsOpen, setServerIconsOpen] = useState(false);
   const [serverIconEntries, setServerIconEntries] = useState<FileListEntry[] | null>(null);
   const [serverIconImages, setServerIconImages] = useState<Record<string, string>>({});
-  const [treeWidth, setTreeWidth] = useState(260);
+  // Standard gives the channel list more room by default; other themes keep 260.
+  const [treeWidth, setTreeWidth] = useState(() =>
+    resolveDesignThemeBase(loadDesignSelection(), loadCustomThemes()) === "standard" ? 340 : 260,
+  );
   const [upperHeight, setUpperHeight] = useState(340);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   // Standard desktop: the info column only opens once something is picked.

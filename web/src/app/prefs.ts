@@ -477,7 +477,7 @@ export function loadTreeOptions(): TreeOptions {
  *  keeps 100% - its layout is laid out for the phone's own width). */
 export const UI_SCALE_KEY = "webspeak3:ui-scale";
 export const UI_SCALES = [1, 1.1, 1.25, 1.5] as const;
-export const DEFAULT_UI_SCALE = 1.25;
+export const DEFAULT_UI_SCALE = 1;
 
 export function loadUiScale(): number {
   const n = Number(localStorage.getItem(UI_SCALE_KEY));
