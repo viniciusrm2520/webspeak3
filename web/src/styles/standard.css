@@ -887,3 +887,88 @@
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
+
+/* ---------- Status icons: Material4Teamspeak (white) ----------
+   public/iconpacks/material-white, CC BY-NC-SA 4.0 (see its README). The
+   icons are white silhouettes, so they're used as masks and painted with the
+   theme's colors: they work in light and dark, and the talk lamp lights up
+   in the accent. An icon pack picked under Options -> Addons still wins. */
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon] {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: transparent;
+  font-size: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  background: var(--status-icon-color, var(--text-muted));
+  -webkit-mask: var(--status-icon) center / contain no-repeat;
+  mask: var(--status-icon) center / contain no-repeat;
+  transition: background-color 0.12s ease;
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon] > *,
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon]::before,
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon]::after {
+  display: none;
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="talkIdle"] {
+  --status-icon: url("/iconpacks/material-white/player_off.png");
+  --status-icon-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="talking"] {
+  --status-icon: url("/iconpacks/material-white/player_on.png");
+  --status-icon-color: var(--accent);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="commanderIdle"] {
+  --status-icon: url("/iconpacks/material-white/player_commander_off.png");
+  --status-icon-color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="commanderTalking"] {
+  --status-icon: url("/iconpacks/material-white/player_commander_on.png");
+  --status-icon-color: var(--accent);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="micMuted"] {
+  --status-icon: url("/iconpacks/material-white/muted_input.png");
+  --status-icon-color: var(--log-error);
+}
+
+/* Mic switched off on the device: same glyph, grey rather than red. */
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="hardwareMicMuted"] {
+  --status-icon: url("/iconpacks/material-white/muted_input.png");
+  --status-icon-color: var(--text-muted);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="soundMuted"] {
+  --status-icon: url("/iconpacks/material-white/muted_output.png");
+  --status-icon-color: var(--log-error);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="away"] {
+  --status-icon: url("/iconpacks/material-white/away.png");
+  --status-icon-color: var(--alpha-badge);
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="channel"] {
+  --status-icon: url("/iconpacks/material-white/channel_green.png");
+  --status-icon-color: var(--text-muted);
+  width: 15px;
+  height: 15px;
+}
+
+.ts-app.ts-design-standard:not(.ts-has-icon-pack) [data-pack-icon="server"] {
+  --status-icon: url("/iconpacks/material-white/server.png");
+  --status-icon-color: var(--text-muted);
+  width: 15px;
+  height: 15px;
+}

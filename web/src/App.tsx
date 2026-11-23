@@ -4913,7 +4913,7 @@ function AppInner() {
     <div
       className={`ts-app ts-theme-${theme}${designThemeClassName(designTheme)}${
         activeCustomTheme ? " ts-design-custom" : ""
-      }${demoForceMobile ? " ts-force-mobile" : ""}${mobile ? ` ts-mobile ts-mobile-tab-${mobileTab}` : ""}${novaSplash ? " ts-nova-splash" : ""}${
+      }${iconPackStyle ? " ts-has-icon-pack" : ""}${demoForceMobile ? " ts-force-mobile" : ""}${mobile ? ` ts-mobile ts-mobile-tab-${mobileTab}` : ""}${novaSplash ? " ts-nova-splash" : ""}${
         designTheme === "ide" && !idePixelFont ? " ts-ide-plain-font" : ""
       }`}
       data-custom-theme={activeCustomTheme?.id}
