@@ -449,6 +449,7 @@
   "hotkeys.globalHelper.missing": "ptt-helper nenalezen – spusťte ptt-helper na tomto počítači",
   "hotkeys.globalHelper.unsupported": "ptt-helper tuto klávesu sledovat neumí – vyberte jinou",
   "hotkeys.globalHelper.hint": "ptt-helper je malý program, který v celém systému sleduje jen vaši klávesu push-to-talk a předává ji této stránce. Přijímá jen stránky z localhostu a z adres, které povolíte.",
+  "hotkeys.globalHelper.download": "Stáhnout ptt-helper",
   "recording.continuous": "Nepřetržitý přenos",
   "recording.voiceActivation": "Detekce aktivace hlasem",
   "recording.testStart": "Spustit test",

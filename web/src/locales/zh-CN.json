@@ -343,6 +343,7 @@
   "hotkeys.globalHelper.missing": "未找到 ptt-helper – 请在这台电脑上启动 ptt-helper",
   "hotkeys.globalHelper.unsupported": "ptt-helper 无法监听此按键 – 请换一个",
   "hotkeys.globalHelper.hint": "ptt-helper 是一个小程序，只在整个系统中监听你的按键说话键，并将其传给此页面。它只接受来自 localhost 和你允许的网站的页面。",
+  "hotkeys.globalHelper.download": "下载 ptt-helper",
   "recording.continuous": "持续传输",
   "recording.voiceActivation": "语音激活检测",
   "recording.testStart": "开始测试",

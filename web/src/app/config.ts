@@ -60,6 +60,12 @@ export const STORE_URL = import.meta.env.DEV
 // to drop the button, or point it somewhere else.
 export const DONATE_URL = import.meta.env.VITE_DONATE_URL ?? "https://ko-fi.com/moepchi";
 
+// Where the Hotkeys tab sends people to download ptt-helper (the global
+// push-to-talk companion). Builds of ptt-helper-release.yml land there.
+// VITE_PTT_HELPER_URL overrides it; empty hides the link.
+export const PTT_HELPER_DOWNLOAD_URL =
+  import.meta.env.VITE_PTT_HELPER_URL ?? "https://github.com/viniciusrm2520/webspeak3/releases?q=ptt-helper&expanded=true";
+
 // This file's frontend is deployed as multiple Cloudflare Pages projects
 // from the same repo/build (see mem:deployment) - only the maintainer's own
 // production instance talks to a gateway they actually operate and read

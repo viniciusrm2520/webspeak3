@@ -14,6 +14,9 @@ concurrency:
 
 jobs:
   build-and-push:
+    # ptt-helper ships its own releases (ptt-helper-release.yml) - those are
+    # not WebSpeak3 versions and must not publish an image.
+    if: ${{ !startsWith(github.event.release.tag_name || '', 'ptt-helper-') }}
     name: Build and push moepchi/webspeak3
     runs-on: ubuntu-latest
     timeout-minutes: 30

@@ -8,6 +8,14 @@ program is in front. `ptt-helper` is a small background program that watches
 **one** key system-wide and tells the page, over a WebSocket on
 `127.0.0.1:37373`, when that key goes down and up.
 
+## Download
+
+Prebuilt archives for Windows, Linux and macOS are attached to the
+[ptt-helper releases](https://github.com/viniciusrm2520/webspeak3/releases?q=ptt-helper&expanded=true),
+built by `.github/workflows/ptt-helper-release.yml` whenever a
+`ptt-helper-v*` tag is pushed. Each archive includes an
+`allowed-origins.txt` you can edit.
+
 ## Use it
 
 1. Start `ptt-helper` (see *Build* below) and leave it running.

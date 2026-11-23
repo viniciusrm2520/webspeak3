@@ -449,6 +449,7 @@
   "hotkeys.globalHelper.missing": "ptt-helper پیدا نشد – ptt-helper را روی این رایانه اجرا کنید",
   "hotkeys.globalHelper.unsupported": "ptt-helper نمی‌تواند این کلید را دنبال کند – کلید دیگری انتخاب کنید",
   "hotkeys.globalHelper.hint": "ptt-helper برنامه کوچکی است که در کل سیستم فقط کلید push-to-talk شما را زیر نظر دارد و آن را به این صفحه می‌دهد. فقط صفحه‌های localhost و نشانی‌هایی را که اجازه می‌دهید می‌پذیرد.",
+  "hotkeys.globalHelper.download": "دانلود ptt-helper",
   "recording.continuous": "ارسال پیوسته",
   "recording.voiceActivation": "تشخیص فعال‌سازی صوتی",
   "recording.testStart": "شروع آزمایش",

@@ -1,4 +1,5 @@
 import type { AudioSettings } from "../app/shared";
+import { PTT_HELPER_DOWNLOAD_URL } from "../app/config";
 import { PttKeyButton } from "../components/ui";
 import { useT } from "../i18n";
 
@@ -37,7 +38,17 @@ export function HotkeysPanel({ audio }: { audio: AudioSettings }) {
                 : t("hotkeys.globalHelper.missing")}
           </p>
         )}
-        <p className="ts-options-hint">{t("hotkeys.globalHelper.hint")}</p>
+        <p className="ts-options-hint">
+          {t("hotkeys.globalHelper.hint")}
+          {PTT_HELPER_DOWNLOAD_URL && (
+            <>
+              {" "}
+              <a href={PTT_HELPER_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+                {t("hotkeys.globalHelper.download")}
+              </a>
+            </>
+          )}
+        </p>
       </fieldset>
       <fieldset className="ts-options-fieldset">
         <legend>{t("hotkeys.shortcuts")}</legend>

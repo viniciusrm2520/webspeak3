@@ -1,0 +1,3 @@
+# Sites allowed to use ptt-helper, one per line: scheme + host, no path.
+# localhost and 127.0.0.1 are always allowed.
+https://ts3-web.viniciusrodrigues.dev.br

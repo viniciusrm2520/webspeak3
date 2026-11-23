@@ -449,6 +449,7 @@
   "hotkeys.globalHelper.missing": "ptt-helper not found – start ptt-helper on this computer",
   "hotkeys.globalHelper.unsupported": "ptt-helper can’t watch this key – pick another one",
   "hotkeys.globalHelper.hint": "ptt-helper is a small program that watches only your push-to-talk key across the whole system and passes it to this page. It only accepts pages from localhost and the sites you allow.",
+  "hotkeys.globalHelper.download": "Download ptt-helper",
   "recording.continuous": "Continuous transmission",
   "recording.voiceActivation": "Voice activation detection",
   "recording.testStart": "Start test",
