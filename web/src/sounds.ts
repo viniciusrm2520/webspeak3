@@ -129,6 +129,22 @@ class NotificationSoundPlayer {
   private element: SinkableElement | null = null;
   private outputDeviceId = "";
 
+  constructor() {
+    // A Bluetooth headset switching to its hands-free profile (as soon as any
+    // tab opens its mic) changes the output's sample rate; a context opened
+    // before that kept rendering in the old format and every chime came out
+    // slower and lower. Rebuild it lazily on the next sound instead.
+    navigator.mediaDevices?.addEventListener?.("devicechange", () => this.reset());
+  }
+
+  private reset(): void {
+    void this.context?.close().catch(() => {});
+    if (this.element) this.element.srcObject = null;
+    this.context = null;
+    this.destination = null;
+    this.element = null;
+  }
+
   private ensure(): { context: AudioContext; destination: MediaStreamAudioDestinationNode } {
     if (!this.context) {
       const context = new AudioContext();
@@ -153,17 +169,28 @@ class NotificationSoundPlayer {
     }
   }
 
+  /** Audio files (sound packs, custom sounds) play through their own <audio>
+   *  element, which opens a fresh output stream in the device's current
+   *  format every time - unlike a long-lived AudioContext, it can't be left
+   *  rendering at a sample rate the device no longer runs at (see the
+   *  constructor), which is what made the sound pack's voice drop in pitch a
+   *  few seconds after the page loaded on Bluetooth headsets. */
   async playBlob(blob: Blob, volume: number): Promise<void> {
-    const { context, destination } = this.ensure();
-    if (context.state === "suspended") await context.resume().catch(() => {});
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioBuffer = await context.decodeAudioData(arrayBuffer);
-    const source = context.createBufferSource();
-    source.buffer = audioBuffer;
-    const gain = context.createGain();
-    gain.gain.value = volume;
-    source.connect(gain).connect(destination);
-    source.start();
+    const url = URL.createObjectURL(blob);
+    const element: SinkableElement = new Audio(url);
+    element.volume = Math.min(1, Math.max(0, volume));
+    const release = () => URL.revokeObjectURL(url);
+    element.addEventListener("ended", release, { once: true });
+    element.addEventListener("error", release, { once: true });
+    if (this.outputDeviceId && typeof element.setSinkId === "function") {
+      await element.setSinkId(this.outputDeviceId).catch(() => {});
+    }
+    try {
+      await element.play();
+    } catch (err) {
+      release();
+      throw err;
+    }
   }
 
   playSynth(event: SoundEventId, volume: number): void {
