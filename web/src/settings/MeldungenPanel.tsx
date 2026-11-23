@@ -31,12 +31,33 @@ function useSoundPacks(): [SoundPack[], () => void] {
   return [packs, reload];
 }
 
-/** WebSpeak3 Standard, Keine Sounds and the imported packs. */
-export function SoundPackOptions() {
+/** Sound pack picker: WebSpeak3 Standard, Keine Sounds, the shipped TS3 voice
+ *  and the imported packs. Renders the whole <select> so its value is applied
+ *  again once the packs (loaded asynchronously) are in the list - with only
+ *  the options in a child, the browser kept the first option selected. */
+export function SoundPackSelect({
+  value,
+  onChange,
+  id,
+  disabled,
+  packs: givenPacks,
+  leading,
+}: {
+  value: string;
+  onChange: (pack: string) => void;
+  id?: string;
+  disabled?: boolean;
+  /** Already-loaded packs, so a parent that also needs them loads them once. */
+  packs?: SoundPack[];
+  /** Extra options before the built-in ones (e.g. "use the global setting"). */
+  leading?: React.ReactNode;
+}) {
   const t = useT();
-  const [packs] = useSoundPacks();
+  const [ownPacks] = useSoundPacks();
+  const packs = givenPacks ?? ownPacks;
   return (
-    <>
+    <select id={id} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>
+      {leading}
       <option value={BUILTIN_PACK}>{t("notify.pack.builtin")}</option>
       <option value={NO_SOUNDS_PACK}>{t("notify.pack.none")}</option>
       {packs.map((p) => (
@@ -44,7 +65,7 @@ export function SoundPackOptions() {
           {p.name}
         </option>
       ))}
-    </>
+    </select>
   );
 }
 
@@ -192,9 +213,12 @@ export function MeldungenPanel({
       <div className="ts-options-fields">
         <div className="ts-notify-row">
           <label htmlFor="ts-notify-pack">{t("notify.soundPack")}</label>
-          <select id="ts-notify-pack" value={settings.pack} onChange={(e) => save({ ...settings, pack: e.target.value })}>
-            <SoundPackOptions key={packs.length} />
-          </select>
+          <SoundPackSelect
+            id="ts-notify-pack"
+            value={settings.pack}
+            packs={packs}
+            onChange={(pack) => save({ ...settings, pack })}
+          />
           <button
             title={t("notify.applyToFavorites")}
             onClick={() => {
@@ -206,7 +230,7 @@ export function MeldungenPanel({
           <button title={t("notify.importPack")} onClick={() => fileRef.current?.click()}>
             📂
           </button>
-          {pack && (
+          {pack && !pack.bundled && (
             <button
               title={t("notify.deletePack")}
               onClick={() => {

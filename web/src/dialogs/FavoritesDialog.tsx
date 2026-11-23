@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { type Favorite, randomId } from "../app/prefs";
 import { useT } from "../i18n";
 import { useBackdropDismiss } from "../lib/a11y";
-import { SoundPackOptions } from "../settings/MeldungenPanel";
+import { SoundPackSelect } from "../settings/MeldungenPanel";
 
 export function FavoritesDialog({
   favorites,
@@ -175,14 +175,12 @@ export function FavoritesDialog({
             </label>
             <label className="ts-dialog-field">
               {t("connect.soundPack")}
-              <select
+              <SoundPackSelect
                 disabled={!selected}
                 value={selected?.soundPack ?? ""}
-                onChange={(e) => updateSelected({ soundPack: e.target.value || undefined })}
-              >
-                <option value="">Standard</option>
-                <SoundPackOptions />
-              </select>
+                onChange={(pack) => updateSelected({ soundPack: pack || undefined })}
+                leading={<option value="">Standard</option>}
+              />
             </label>
             <label className="ts-dialog-checkbox">
               <input

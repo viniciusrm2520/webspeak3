@@ -143,6 +143,11 @@ const BUILTIN_SCRIPTS: Record<string, SoundEventId> = {
 
 export const BUILTIN_PACK = "builtin";
 export const NO_SOUNDS_PACK = "none";
+/** TeamSpeak 3's own female voice pack, shipped with the app under
+ *  public/soundpacks/ts3-female (settings.ini keeps its copyright notice).
+ *  The default for anyone who hasn't picked another pack. */
+export const TS3_VOICE_PACK = "bundled:ts3-female";
+const TS3_VOICE_BASE = `${import.meta.env.BASE_URL}soundpacks/ts3-female/`;
 
 export interface SoundPack {
   id: string;
@@ -150,6 +155,10 @@ export interface SoundPack {
   scripts: Record<string, string>;
   /** Lowercased path relative to settings.ini -> audio. */
   files: Record<string, Blob>;
+  /** Shipped with the app (not stored, can't be deleted); its audio is
+   *  downloaded the first time each file plays instead of held in `files`. */
+  bundled?: boolean;
+  fetchFile?: (path: string) => Promise<Blob | undefined>;
 }
 
 /** Where an event's text line goes; several at once, like native's multiple choice.
@@ -170,7 +179,7 @@ export interface NotificationSettings {
 }
 
 const SETTINGS_KEY = "webspeak3:notification-settings";
-const DEFAULT_SETTINGS: NotificationSettings = { pack: BUILTIN_PACK, whenMuted: "all", overrides: {} };
+const DEFAULT_SETTINGS: NotificationSettings = { pack: TS3_VOICE_PACK, whenMuted: "all", overrides: {} };
 
 let settings: NotificationSettings = (() => {
   try {
@@ -209,10 +218,44 @@ function withPacks<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => 
 }
 
 let packsCache: Promise<SoundPack[]> | null = null;
+let bundledCache: Promise<SoundPack | null> | null = null;
+
+/** The shipped TS3 voice pack: settings.ini now, each sound on first play. */
+function loadBundledPack(): Promise<SoundPack | null> {
+  bundledCache ??= fetch(`${TS3_VOICE_BASE}settings.ini`)
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`settings.ini: HTTP ${r.status}`))))
+    .then((ini) => {
+      const { scripts } = parseSoundPackIni(ini, "");
+      const files = new Map<string, Promise<Blob | undefined>>();
+      const fetchFile = (path: string) => {
+        if (!files.has(path)) {
+          const url = TS3_VOICE_BASE + path.split("/").map(encodeURIComponent).join("/");
+          files.set(path, fetch(url).then((r) => (r.ok ? r.blob() : undefined)).catch(() => undefined));
+        }
+        return files.get(path)!;
+      };
+      return { id: TS3_VOICE_PACK, name: "TeamSpeak 3 (Female voice)", scripts, files: {}, bundled: true, fetchFile };
+    })
+    .catch((err: unknown) => {
+      console.warn("Bundled sound pack unavailable:", err);
+      bundledCache = null;
+      return null;
+    });
+  return bundledCache;
+}
 
 export function loadSoundPacks(): Promise<SoundPack[]> {
-  packsCache ??= withPacks<SoundPack[]>("readonly", (s) => s.getAll()).catch(() => []);
+  packsCache ??= Promise.all([
+    loadBundledPack(),
+    withPacks<SoundPack[]>("readonly", (s) => s.getAll()).catch(() => [] as SoundPack[]),
+  ]).then(([bundled, imported]) => (bundled ? [bundled, ...imported] : imported));
   return packsCache;
+}
+
+/** The pack behind a pack id, for ids that aren't the chimes or "no sounds". */
+async function findPack(packId: string): Promise<SoundPack | undefined> {
+  if (packId === BUILTIN_PACK || packId === NO_SOUNDS_PACK) return undefined;
+  return (await loadSoundPacks()).find((p) => p.id === packId);
 }
 
 export async function deleteSoundPack(id: string): Promise<void> {
@@ -222,15 +265,8 @@ export async function deleteSoundPack(id: string): Promise<void> {
 
 const AUDIO = /\.(wav|mp3|ogg|m4a)$/i;
 
-/** Parses a TS3 sound pack (.ts3_soundpack / .zip with a settings.ini). */
-export function parseSoundPackZip(data: Uint8Array, fallbackName: string): SoundPack {
-  const entries = unzipSync(data);
-  const iniPath = Object.keys(entries)
-    .filter((p) => p.toLowerCase().endsWith("settings.ini"))
-    .sort((a, b) => a.length - b.length)[0];
-  if (!iniPath) throw new Error("settings.ini missing");
-  const base = iniPath.slice(0, iniPath.length - "settings.ini".length).toLowerCase();
-  const ini = new TextDecoder().decode(entries[iniPath]);
+/** A TS3 sound pack's settings.ini: [info] name and the [soundfiles] scripts. */
+function parseSoundPackIni(ini: string, fallbackName: string): { name: string; scripts: Record<string, string> } {
   let section = "";
   let name = fallbackName;
   const scripts: Record<string, string> = {};
@@ -249,6 +285,18 @@ export function parseSoundPackZip(data: Uint8Array, fallbackName: string): Sound
     if (section === "info" && k === "name" && v) name = v;
     else if (section === "soundfiles") scripts[k] = v;
   }
+  return { name, scripts };
+}
+
+/** Parses a TS3 sound pack (.ts3_soundpack / .zip with a settings.ini). */
+export function parseSoundPackZip(data: Uint8Array, fallbackName: string): SoundPack {
+  const entries = unzipSync(data);
+  const iniPath = Object.keys(entries)
+    .filter((p) => p.toLowerCase().endsWith("settings.ini"))
+    .sort((a, b) => a.length - b.length)[0];
+  if (!iniPath) throw new Error("settings.ini missing");
+  const base = iniPath.slice(0, iniPath.length - "settings.ini".length).toLowerCase();
+  const { name, scripts } = parseSoundPackIni(new TextDecoder().decode(entries[iniPath]), fallbackName);
   const files: Record<string, Blob> = {};
   for (const [path, bytes] of Object.entries(entries)) {
     const lower = path.toLowerCase();
@@ -296,7 +344,7 @@ export function notificationTextPositions(key: string): TextPosition[] {
 export type NotificationVars = Record<string, string>;
 
 export async function runSoundScript(script: string, packId: string, vars: NotificationVars = {}): Promise<void> {
-  const pack = packId.startsWith("pack:") ? (await loadSoundPacks()).find((p) => p.id === packId) : undefined;
+  const pack = await findPack(packId);
   const fill = (s: string) => s.replace(/\$\{(\w+)\}/g, (_, v: string) => vars[v] ?? (v === "clientType" ? "neutral" : ""));
   for (const [, fn, arg] of script.matchAll(/(play|say)\(\s*"([^"]*)"\s*\)/g)) {
     const value = fill(arg);
@@ -305,7 +353,8 @@ export async function runSoundScript(script: string, packId: string, vars: Notif
     } else if (packId === BUILTIN_PACK || !pack) {
       if ((SOUND_EVENTS as string[]).includes(value)) await playSound(value as SoundEventId);
     } else {
-      const blob = pack.files[value.toLowerCase().replace(/\\/g, "/")];
+      const path = value.toLowerCase().replace(/\\/g, "/");
+      const blob = pack.files[path] ?? (await pack.fetchFile?.(path));
       if (blob) await playSoundBlob(blob);
     }
   }
@@ -318,6 +367,6 @@ export async function notify(key: string, vars?: NotificationVars): Promise<void
     return;
   const packId = sessionPack ?? settings.pack;
   const override = settings.overrides[key]?.script;
-  const pack = packId.startsWith("pack:") ? (await loadSoundPacks()).find((p) => p.id === packId) : undefined;
+  const pack = await findPack(packId);
   await runSoundScript(override ?? packScript(pack, packId, key), packId, vars);
 }
