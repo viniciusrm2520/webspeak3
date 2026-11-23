@@ -69,6 +69,7 @@ const MOBILE_ICONS = {
   screen: "M3 4h18v12H3zM8 20h8M12 16v4",
   screenStop: "M3 4h18v12H3zM8 20h8M12 16v4M9 7l6 6M15 7l-6 6",
   music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+  expand: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
 } as const;
 
 export function MobileIcon({ name }: { name: keyof typeof MOBILE_ICONS }) {

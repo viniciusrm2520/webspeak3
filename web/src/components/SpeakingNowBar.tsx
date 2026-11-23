@@ -1,19 +1,73 @@
 import type { ClientInfo, GroupEntry } from "../app/model";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { groupBadgeColor } from "../app/shared";
 import { useT } from "../i18n";
 import { TalkLamp } from "./ChannelTree";
-import { AvatarTile } from "./ui";
+import { AvatarTile, MobileIcon } from "./ui";
 
 /** Live video inside a card: a stream being watched, or your own preview. */
 function TileVideo({ stream, own }: { stream: MediaStream; own: boolean }) {
+  const t = useT();
   const ref = useRef<HTMLVideoElement | null>(null);
+  // Starts muted so autoplay is never blocked. Without the native controls
+  // the sound toggle is the only way to hear a stream that carries audio.
+  const [muted, setMuted] = useState(true);
   useEffect(() => {
     if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream;
   }, [stream]);
-  // Muted so autoplay is never blocked; controls let the viewer unmute or go
-  // fullscreen. Your own preview never plays its audio back to you.
-  return <video ref={ref} className="ts-speaking-now-video" autoPlay playsInline muted controls={!own} />;
+  useEffect(() => {
+    // Your own preview never plays its audio back to you.
+    if (ref.current) ref.current.muted = own || muted;
+  }, [own, muted]);
+  const hasAudio = !own && stream.getAudioTracks().length > 0;
+  const toggleFullscreen = () => {
+    const video = ref.current;
+    if (!video) return;
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void video.requestFullscreen?.().catch(() => {});
+  };
+  const soundLabel = muted ? t("toolbar.unmuteSound") : t("toolbar.muteSound");
+  return (
+    <div className="ts-speaking-now-video-wrap">
+      <video
+        ref={ref}
+        className="ts-speaking-now-video"
+        autoPlay
+        playsInline
+        muted
+        onDoubleClick={own ? undefined : (e) => {
+          e.stopPropagation();
+          toggleFullscreen();
+        }}
+      />
+      {!own && (
+        <div className="ts-speaking-now-video-tools">
+          {hasAudio && (
+            <button
+              title={soundLabel}
+              aria-label={soundLabel}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMuted((m) => !m);
+              }}
+            >
+              <MobileIcon name={muted ? "soundOff" : "sound"} />
+            </button>
+          )}
+          <button
+            title={t("stream.expand")}
+            aria-label={t("stream.expand")}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
+          >
+            <MobileIcon name="expand" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Standard layout: streams on the member cards. */

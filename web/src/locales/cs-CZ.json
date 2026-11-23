@@ -554,6 +554,7 @@
   "publish.mode.serverUnavailable": "Režim serveru používá SFU služby TS6 a zatím není implementován.",
   "stream.untitled": "Stream",
   "stream.stop": "Zavřít stream",
+  "stream.expand": "Celá obrazovka",
   "stream.live": "Živě",
   "stream.state.new": "Čekání na nabídku…",
   "stream.state.connecting": "Připojování…",

@@ -553,6 +553,7 @@
   "publish.mode.serverUnavailable": "حالت سرور از طریق SFU در TS6 انجام می‌شود و هنوز پیاده‌سازی نشده است.",
   "stream.untitled": "پخش زنده",
   "stream.stop": "بستن پخش زنده",
+  "stream.expand": "تمام‌صفحه",
   "stream.live": "زنده",
   "stream.state.new": "در انتظار پیشنهاد اتصال…",
   "stream.state.connecting": "در حال اتصال…",

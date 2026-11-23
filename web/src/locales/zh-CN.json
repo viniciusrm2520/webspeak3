@@ -767,6 +767,7 @@
   "publish.mode.serverUnavailable": "服务器模式需经过 TS6 的 SFU，尚未实现。",
   "stream.untitled": "直播",
   "stream.stop": "关闭直播",
+  "stream.expand": "全屏",
   "stream.live": "直播中",
   "stream.state.new": "等待推流…",
   "stream.state.connecting": "连接中…",

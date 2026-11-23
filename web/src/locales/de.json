@@ -554,6 +554,7 @@
   "publish.mode.serverUnavailable": "Der Server-Modus läuft über TS6s SFU und ist noch nicht implementiert.",
   "stream.untitled": "Stream",
   "stream.stop": "Stream schließen",
+  "stream.expand": "Vollbild",
   "stream.live": "Live",
   "stream.state.new": "Warte auf Angebot…",
   "stream.state.connecting": "Verbinde…",

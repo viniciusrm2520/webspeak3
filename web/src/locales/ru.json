@@ -554,6 +554,7 @@
   "publish.mode.serverUnavailable": "Серверный режим идёт через SFU TS6 и пока не реализован.",
   "stream.untitled": "Трансляция",
   "stream.stop": "Закрыть трансляцию",
+  "stream.expand": "Во весь экран",
   "stream.live": "В эфире",
   "stream.state.new": "Ожидание предложения…",
   "stream.state.connecting": "Подключение…",
