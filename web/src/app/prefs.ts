@@ -473,6 +473,17 @@ export function loadTreeOptions(): TreeOptions {
 }
 
 /** Display prefs read deep in the tree; a context spares threading them through every level. */
+/** Options -> Appearance: zoom for the whole interface on desktop (mobile
+ *  keeps 100% - its layout is laid out for the phone's own width). */
+export const UI_SCALE_KEY = "webspeak3:ui-scale";
+export const UI_SCALES = [1, 1.1, 1.25, 1.5] as const;
+export const DEFAULT_UI_SCALE = 1.25;
+
+export function loadUiScale(): number {
+  const n = Number(localStorage.getItem(UI_SCALE_KEY));
+  return (UI_SCALES as readonly number[]).includes(n) ? n : DEFAULT_UI_SCALE;
+}
+
 export const DisplayPrefsContext = createContext<{
   tree: TreeOptions;
   setTree: (next: TreeOptions) => void;
@@ -490,6 +501,8 @@ export const DisplayPrefsContext = createContext<{
   setChat: (next: ChatSettings) => void;
   security: SecuritySettings;
   setSecurity: (next: SecuritySettings) => void;
+  uiScale: number;
+  setUiScale: (scale: number) => void;
 }>({
   tree: DEFAULT_TREE_OPTIONS,
   setTree: () => {},
@@ -507,6 +520,8 @@ export const DisplayPrefsContext = createContext<{
   setChat: () => {},
   security: DEFAULT_SECURITY_SETTINGS,
   setSecurity: () => {},
+  uiScale: DEFAULT_UI_SCALE,
+  setUiScale: () => {},
 });
 const DISCONNECT_MESSAGE_KEY = "webspeak3:disconnect-message";
 export const COLLECTED_URLS_KEY = "webspeak3:collected-urls";

@@ -37,6 +37,14 @@
   container-type: inline-size;
 }
 
+/* Options -> Appearance -> Interface scale (desktop only). zoom scales the
+   whole layout; the height is divided back so 100vh still means one screen
+   instead of 1.25 screens and a scrollbar. */
+.ts-app.ts-scaled {
+  zoom: var(--ui-scale);
+  height: calc(100vh / var(--ui-scale));
+}
+
 /* Demo-only: simulates a narrow viewport so the mobile layout (driven by
    the @container rules below) can be previewed without resizing the
    actual browser window. */

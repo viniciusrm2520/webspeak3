@@ -91,6 +91,7 @@ import {
   loadMuteBinding,
   loadPttBinding,
   loadSecuritySettings,
+  loadUiScale,
   loadTreeOptions,
   loadWhisperLists,
   loadWhisperSettings,
@@ -114,6 +115,7 @@ import {
   saveAwayPresets,
   saveCustomThemes,
   SECURITY_SETTINGS_KEY,
+  UI_SCALE_KEY,
   type SecuritySettings,
   SERVER_BANNER_KEY,
   storeChannelPassword,
@@ -564,6 +566,11 @@ function AppInner() {
   const [downloadDir, setDownloadDir] = useState<FileSystemDirectoryHandle | null>(null);
   const [chatSettings, setChatSettings] = useState(loadChatSettings);
   const [securitySettings, setSecuritySettings] = useState(loadSecuritySettings);
+  const [uiScale, setUiScale] = useState(loadUiScale);
+  // The zoom actually applied: the phone layout stays at 100%. Mouse
+  // coordinates are in unzoomed pixels, so anything placed or sized from
+  // them (context menus, resize handles) divides by this.
+  const uiZoom = mobile ? 1 : uiScale;
   const securitySettingsRef = useRef(securitySettings);
   securitySettingsRef.current = securitySettings;
   // "... beim Beenden": pagehide is the last event a closing tab reliably gets.
@@ -624,8 +631,13 @@ function AppInner() {
         setSecuritySettings(next);
         localStorage.setItem(SECURITY_SETTINGS_KEY, JSON.stringify(next));
       },
+      uiScale,
+      setUiScale: (scale: number) => {
+        setUiScale(scale);
+        localStorage.setItem(UI_SCALE_KEY, String(scale));
+      },
     }),
-    [treeOptions, iconPacks, iconPackId, whisperSettings, downloadSettings, downloadDir, chatSettings, securitySettings]
+    [treeOptions, iconPacks, iconPackId, whisperSettings, downloadSettings, downloadDir, chatSettings, securitySettings, uiScale]
   );
   const iconPackStyle = iconPackCss(iconPacks.find((p) => p.id === iconPackId));
   const [micOn, setMicOn] = useState(false);
@@ -1200,7 +1212,7 @@ function AppInner() {
     const startX = e.clientX;
     const startWidth = treeWidth;
     const onMove = (ev: MouseEvent) => {
-      setTreeWidth(Math.min(500, Math.max(150, startWidth + (ev.clientX - startX))));
+      setTreeWidth(Math.min(500, Math.max(150, startWidth + (ev.clientX - startX) / uiZoom)));
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
@@ -1215,7 +1227,7 @@ function AppInner() {
     const startY = e.clientY;
     const startHeight = upperHeight;
     const onMove = (ev: MouseEvent) => {
-      setUpperHeight(Math.min(700, Math.max(120, startHeight + (ev.clientY - startY))));
+      setUpperHeight(Math.min(700, Math.max(120, startHeight + (ev.clientY - startY) / uiZoom)));
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
@@ -3834,15 +3846,15 @@ function AppInner() {
     isSelf: boolean
   ) => {
     e.preventDefault();
-    const x = Math.min(e.clientX, window.innerWidth - 220);
-    const y = Math.min(e.clientY, window.innerHeight - 300);
+    const x = Math.min(e.clientX / uiZoom, window.innerWidth / uiZoom - 220);
+    const y = Math.min(e.clientY / uiZoom, window.innerHeight / uiZoom - 300);
     setClientContextMenu({ x, y, clientId, clientName, isSelf });
   };
 
   const handleServerContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    const x = Math.min(e.clientX, window.innerWidth - 220);
-    const y = Math.min(e.clientY, window.innerHeight - 300);
+    const x = Math.min(e.clientX / uiZoom, window.innerWidth / uiZoom - 220);
+    const y = Math.min(e.clientY / uiZoom, window.innerHeight / uiZoom - 300);
     setServerContextMenu({ x, y });
   };
 
@@ -3980,8 +3992,8 @@ function AppInner() {
 
   const handleChannelContextMenu = (e: React.MouseEvent, channelId: number, channelName: string) => {
     e.preventDefault();
-    const x = Math.min(e.clientX, window.innerWidth - 220);
-    const y = Math.min(e.clientY, window.innerHeight - 200);
+    const x = Math.min(e.clientX / uiZoom, window.innerWidth / uiZoom - 220);
+    const y = Math.min(e.clientY / uiZoom, window.innerHeight / uiZoom - 200);
     setChannelContextMenu({ x, y, channelId, channelName });
   };
 
@@ -4915,7 +4927,8 @@ function AppInner() {
         activeCustomTheme ? " ts-design-custom" : ""
       }${iconPackStyle ? " ts-has-icon-pack" : ""}${demoForceMobile ? " ts-force-mobile" : ""}${mobile ? ` ts-mobile ts-mobile-tab-${mobileTab}` : ""}${novaSplash ? " ts-nova-splash" : ""}${
         designTheme === "ide" && !idePixelFont ? " ts-ide-plain-font" : ""
-      }`}
+      }${uiZoom !== 1 ? " ts-scaled" : ""}`}
+      style={uiZoom !== 1 ? ({ "--ui-scale": uiZoom } as React.CSSProperties) : undefined}
       data-custom-theme={activeCustomTheme?.id}
       data-design-theme={designTheme}
     >

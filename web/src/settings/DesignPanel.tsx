@@ -7,6 +7,7 @@ import {
   isDesignTheme,
   resolveDesignThemeBase,
   type TreeOptions,
+  UI_SCALES,
 } from "../app/prefs";
 import { downloadBlob } from "../app/shared";
 import { ActionIcon } from "../components/ui";
@@ -353,6 +354,20 @@ export function DesignPanel({
               <button onClick={() => setManageOpen(true)}>{t("design.manage")}</button>
               <button onClick={() => setStoreOpen(true)}>{t("design.store.open")}</button>
             </div>
+          </fieldset>
+          <fieldset className="ts-options-fieldset">
+            <legend>{t("design.scale")}</legend>
+            <label className="ts-options-field-row">
+              {t("design.scale.label")}
+              <select value={prefs.uiScale} onChange={(e) => prefs.setUiScale(Number(e.target.value))}>
+                {UI_SCALES.map((s) => (
+                  <option key={s} value={s}>
+                    {Math.round(s * 100)}%
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="ts-options-hint">{t("design.scale.hint")}</p>
           </fieldset>
           <fieldset className="ts-options-fieldset">
             <legend>{t("design.gif")}</legend>
