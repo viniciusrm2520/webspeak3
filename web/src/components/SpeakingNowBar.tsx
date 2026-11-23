@@ -6,7 +6,18 @@ import { TalkLamp } from "./ChannelTree";
 import { AvatarTile, MobileIcon } from "./ui";
 
 /** Live video inside a card: a stream being watched, or your own preview. */
-function TileVideo({ stream, own }: { stream: MediaStream; own: boolean }) {
+function TileVideo({
+  stream,
+  own,
+  theater,
+  onToggleTheater,
+}: {
+  stream: MediaStream;
+  own: boolean;
+  /** Widened across the strip (watched streams only). */
+  theater?: boolean;
+  onToggleTheater?: () => void;
+}) {
   const t = useT();
   const ref = useRef<HTMLVideoElement | null>(null);
   // Starts muted so autoplay is never blocked. Without the native controls
@@ -35,10 +46,16 @@ function TileVideo({ stream, own }: { stream: MediaStream; own: boolean }) {
         autoPlay
         playsInline
         muted
-        onDoubleClick={own ? undefined : (e) => {
-          e.stopPropagation();
-          toggleFullscreen();
-        }}
+        title={own ? undefined : theater ? t("stream.theaterOff") : t("stream.theaterOn")}
+        onClick={
+          own || !onToggleTheater
+            ? undefined
+            : (e) => {
+                // Not a member selection: the click is about the video.
+                e.stopPropagation();
+                if (!document.fullscreenElement) onToggleTheater();
+              }
+        }
       />
       {!own && (
         <div className="ts-speaking-now-video-tools">
@@ -120,6 +137,8 @@ export function SpeakingNowBar({
   onContextMenu: (e: React.MouseEvent, clientId: number, clientName: string, isSelf: boolean) => void;
 }) {
   const t = useT();
+  // Which watched stream is widened (theater mode); dropped when it stops.
+  const [theaterId, setTheaterId] = useState<number | null>(null);
   const own = clients.find((c) => c.id === ownClientId);
   if (!own) return null;
   const channelClients = clients.filter((c) => c.channel === own.channel);
@@ -137,19 +156,25 @@ export function SpeakingNowBar({
               ? streams.media
               : null;
         const watching = !!streams && !isSelf && streams.watchingClientId === c.id;
+        const theater = watching && !!video && theaterId === c.id;
         return (
         <div
           key={c.id}
           className={`ts-speaking-now-tile${talkers.has(c.id) ? " ts-speaking-now-tile-active" : ""}${
             c.id === selectedClientId ? " ts-speaking-now-tile-selected" : ""
-          }${live ? " ts-speaking-now-tile-live" : ""}${video || watching ? " ts-speaking-now-tile-video" : ""}`}
+          }${live ? " ts-speaking-now-tile-live" : ""}${video || watching ? " ts-speaking-now-tile-video" : ""}${theater ? " ts-speaking-now-tile-theater" : ""}`}
           title={c.name}
           onClick={() => onSelect(c.id)}
           onDoubleClick={c.id === ownClientId ? undefined : () => onOpenPrivateChat(c.id, c.name)}
           onContextMenu={(e) => onContextMenu(e, c.id, c.name, c.id === ownClientId)}
         >
           {video ? (
-            <TileVideo stream={video} own={isSelf} />
+            <TileVideo
+              stream={video}
+              own={isSelf}
+              theater={theater}
+              onToggleTheater={watching ? () => setTheaterId(theater ? null : c.id) : undefined}
+            />
           ) : watching ? (
             <span className="ts-speaking-now-video ts-speaking-now-video-wait">{t("stream.state.connecting")}</span>
           ) : (
@@ -163,6 +188,7 @@ export function SpeakingNowBar({
               aria-label={t("stream.stop")}
               onClick={(e) => {
                 e.stopPropagation();
+                setTheaterId(null);
                 streams.onStopWatching();
               }}
             >

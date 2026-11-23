@@ -555,6 +555,8 @@
   "stream.untitled": "Трансляция",
   "stream.stop": "Закрыть трансляцию",
   "stream.expand": "Во весь экран",
+  "stream.theaterOn": "Нажмите, чтобы увеличить",
+  "stream.theaterOff": "Нажмите, чтобы уменьшить",
   "stream.live": "В эфире",
   "stream.state.new": "Ожидание предложения…",
   "stream.state.connecting": "Подключение…",

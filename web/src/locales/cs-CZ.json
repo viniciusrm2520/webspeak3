@@ -555,6 +555,8 @@
   "stream.untitled": "Stream",
   "stream.stop": "Zavřít stream",
   "stream.expand": "Celá obrazovka",
+  "stream.theaterOn": "Kliknutím zvětšíte",
+  "stream.theaterOff": "Kliknutím zmenšíte",
   "stream.live": "Živě",
   "stream.state.new": "Čekání na nabídku…",
   "stream.state.connecting": "Připojování…",

@@ -555,6 +555,8 @@
   "stream.untitled": "Stream",
   "stream.stop": "Close stream",
   "stream.expand": "Full screen",
+  "stream.theaterOn": "Click to enlarge",
+  "stream.theaterOff": "Click to shrink",
   "stream.live": "Live",
   "stream.state.new": "Waiting for offer…",
   "stream.state.connecting": "Connecting…",

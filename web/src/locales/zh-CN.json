@@ -768,6 +768,8 @@
   "stream.untitled": "直播",
   "stream.stop": "关闭直播",
   "stream.expand": "全屏",
+  "stream.theaterOn": "点击放大",
+  "stream.theaterOff": "点击缩小",
   "stream.live": "直播中",
   "stream.state.new": "等待推流…",
   "stream.state.connecting": "连接中…",

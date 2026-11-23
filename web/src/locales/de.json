@@ -555,6 +555,8 @@
   "stream.untitled": "Stream",
   "stream.stop": "Stream schließen",
   "stream.expand": "Vollbild",
+  "stream.theaterOn": "Klicken zum Vergrößern",
+  "stream.theaterOff": "Klicken zum Verkleinern",
   "stream.live": "Live",
   "stream.state.new": "Warte auf Angebot…",
   "stream.state.connecting": "Verbinde…",

@@ -1106,3 +1106,41 @@
   width: 16px;
   height: 16px;
 }
+
+/* Theater mode: a watched stream clicked once spans the whole strip and
+   grows tall; the strip may take most of the column and the chat shrinks
+   (never below a few lines). Clicking the video again restores it. */
+.ts-app.ts-design-standard .ts-speaking-now:has(.ts-speaking-now-tile-theater) {
+  max-height: none;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-tile-theater {
+  grid-column: 1 / -1;
+}
+
+/* Sized from the window so the channel header, the chat tabs, a few chat
+   lines and the composer always stay on screen. 100vh is divided by the
+   interface scale: inside the zoomed app it would otherwise grow with it. */
+.ts-app.ts-design-standard .ts-speaking-now-tile-theater .ts-speaking-now-video {
+  aspect-ratio: auto;
+  height: max(160px, min(56cqw, calc(100vh / var(--ui-scale, 1) - 420px)));
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-tile-video .ts-speaking-now-video {
+  cursor: zoom-in;
+}
+
+.ts-app.ts-design-standard .ts-speaking-now-tile-theater .ts-speaking-now-video {
+  cursor: zoom-out;
+}
+
+.ts-app.ts-design-standard .ts-chat-panel:has(.ts-speaking-now-tile-theater) .ts-chat-messages {
+  min-height: 72px;
+}
+
+/* The other members' cards would add a second row above the widened video
+   and push the composer off screen; they stay in the channel list (with
+   their talk lamps) and come back when theater mode ends. */
+.ts-app.ts-design-standard .ts-speaking-now:has(.ts-speaking-now-tile-theater) .ts-speaking-now-tile:not(.ts-speaking-now-tile-theater) {
+  display: none;
+}

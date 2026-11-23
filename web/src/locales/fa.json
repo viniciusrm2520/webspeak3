@@ -554,6 +554,8 @@
   "stream.untitled": "پخش زنده",
   "stream.stop": "بستن پخش زنده",
   "stream.expand": "تمام‌صفحه",
+  "stream.theaterOn": "برای بزرگ‌نمایی کلیک کنید",
+  "stream.theaterOff": "برای کوچک‌نمایی کلیک کنید",
   "stream.live": "زنده",
   "stream.state.new": "در انتظار پیشنهاد اتصال…",
   "stream.state.connecting": "در حال اتصال…",
