@@ -1,12 +1,12 @@
 # ptt-helper
 
-A global push-to-talk key for the WebSpeak3 web client.
+Global push-to-talk and mute keys for the WebSpeak3 web client.
 
 Browsers only hand keyboard input to a page while its tab has focus, so the
-web client's push-to-talk stops working as soon as a game or any other
-program is in front. `ptt-helper` is a small background program that watches
-**one** key system-wide and tells the page, over a WebSocket on
-`127.0.0.1:37373`, when that key goes down and up.
+web client's hotkeys stop working as soon as a game or any other program is
+in front. `ptt-helper` is a small background program that watches the keys
+you picked (push-to-talk, mute/unmute) system-wide and tells the page, over a
+WebSocket on `127.0.0.1:37373`, when they go down and up.
 
 ## Download
 
@@ -19,9 +19,13 @@ built by `.github/workflows/ptt-helper-release.yml` whenever a
 ## Use it
 
 1. Start `ptt-helper` (see *Build* below) and leave it running.
-2. In WebSpeak3: **Options → Hotkeys**, turn on push-to-talk, pick the key,
-   then tick **"Global key via ptt-helper"**. The line under it turns green
-   ("ptt-helper connected") once the page has found the helper.
+2. In WebSpeak3: **Options → Hotkeys**, pick a push-to-talk key and/or a
+   mute toggle key, then under **Global keys** tick the ptt-helper option.
+   The line under it turns green ("ptt-helper connected") once the page has
+   found the helper.
+
+The mute key needs ptt-helper 0.2 or newer; 0.1 only knows push-to-talk and
+the page says so.
 
 Supported keys: letters, digits, the numpad (including `−`, `+`, `*`, `/`,
 Enter), F1–F12 (F13–F24 on Windows), arrows, Insert/Delete/Home/End/PgUp/PgDn,
@@ -41,9 +45,9 @@ accepts pages from:
 An origin is the scheme and host exactly as in the address bar, without a
 path: `https://ts.example.com`, not `https://ts.example.com/`.
 
-Each page only ever hears about the single key it asked for. The helper never
-reports other keys, never blocks the key from reaching other programs, and
-listens on the loopback interface only.
+Each page only ever hears about the keys it asked for (at most four). The
+helper never reports other keys, never blocks keys from reaching other
+programs, and listens on the loopback interface only.
 
 Chrome may ask once for permission to access devices on your local network
 when an HTTPS site connects to the helper; allow it.

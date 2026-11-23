@@ -112,8 +112,10 @@ export const OPTIONS_SECTIONS = [
   { id: "meldungen", icon: "ℹ️" },
 ] as const;
 
-/** ptt-helper connection: off (not wanted), missing (not running), or bound. */
-export type PttHelperStatus = "off" | "missing" | "connected" | "unsupported";
+/** ptt-helper connection: off (not wanted), nokey (nothing to watch yet),
+ *  missing (not running), connected, unsupported (can't watch a chosen key),
+ *  outdated (a 0.1 helper, which only knows the push-to-talk key). */
+export type PttHelperStatus = "off" | "nokey" | "missing" | "connected" | "unsupported" | "outdated";
 
 export interface AudioSettings {
   outputDevices: MediaDeviceInfo[];
@@ -149,6 +151,8 @@ export interface AudioSettings {
   onTypingAttenuationChange: (on: boolean) => void;
   pttBinding: PttBinding | null;
   onPttBindingChange: (binding: PttBinding) => void;
+  muteBinding: PttBinding | null;
+  onMuteBindingChange: (binding: PttBinding | null) => void;
   globalPtt: boolean;
   onGlobalPttChange: (on: boolean) => void;
   pttHelperStatus: PttHelperStatus;

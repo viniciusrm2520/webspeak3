@@ -87,6 +87,7 @@ import {
   loadFavorites,
   loadIdentities,
   loadNumberPref,
+  loadMuteBinding,
   loadPttBinding,
   loadSecuritySettings,
   loadTreeOptions,
@@ -102,6 +103,7 @@ import {
   OWN_MIC_CLICKS_KEY,
   PLAYBACK_VOLUME_KEY,
   PTT_BINDING_KEY,
+  MUTE_BINDING_KEY,
   type PttBinding,
   PUSH_TO_TALK_KEY,
   GLOBAL_PTT_KEY,
@@ -637,9 +639,16 @@ function AppInner() {
   const typingAttenuationRef = useRef(typingAttenuation);
   const [pttBinding, setPttBinding] = useState<PttBinding | null>(loadPttBinding);
   const [pttPressed, setPttPressed] = useState(false);
-  // Push-to-talk key watched system-wide by the ptt-helper companion app.
+  // Press once to mute the microphone, again to unmute.
+  const [muteBinding, setMuteBinding] = useState<PttBinding | null>(loadMuteBinding);
+  // handleToggleMic is defined much further down; key handlers call it through this.
+  const toggleMicRef = useRef<() => void>(() => {});
+  // Keys watched system-wide by the ptt-helper companion app.
   const [globalPtt, setGlobalPtt] = useState(() => loadBoolPref(GLOBAL_PTT_KEY, false));
   const [pttHelperStatus, setPttHelperStatus] = useState<PttHelperStatus>("off");
+  // True while the helper reports the mute key, so the in-page listener
+  // doesn't toggle a second time for the same press.
+  const helperMuteActiveRef = useRef(false);
   // Read when a new MicCapture is created, which happens outside render.
   const pushToTalkRef = useRef(pushToTalk);
   const pttPressedRef = useRef(false);
@@ -922,6 +931,40 @@ function AppInner() {
     if (pttBinding) localStorage.setItem(PTT_BINDING_KEY, JSON.stringify(pttBinding));
   }, [pttBinding]);
 
+  useEffect(() => {
+    if (muteBinding) localStorage.setItem(MUTE_BINDING_KEY, JSON.stringify(muteBinding));
+    else localStorage.removeItem(MUTE_BINDING_KEY);
+  }, [muteBinding]);
+
+  // Mute toggle while this tab has focus. With ptt-helper connected the
+  // helper reports the key instead (it also sees it here), so skip then.
+  useEffect(() => {
+    if (!muteBinding) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== muteBinding.code || e.repeat || e.defaultPrevented) return;
+      if (e.key.length === 1 && isTypingTarget(e.target)) return;
+      if (!isTypingTarget(e.target)) e.preventDefault();
+      if (!helperMuteActiveRef.current) toggleMicRef.current();
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (`Mouse${e.button}` !== muteBinding.code) return;
+      e.preventDefault();
+      if (!helperMuteActiveRef.current) toggleMicRef.current();
+    };
+    // Side buttons navigate back/forward on release.
+    const onMouseUp = (e: MouseEvent) => {
+      if (`Mouse${e.button}` === muteBinding.code) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [muteBinding]);
+
   // Browsers only deliver keys while this tab has focus - there's no global
   // hotkey for websites, so PTT can't work while another program is in front.
   useEffect(() => {
@@ -966,16 +1009,27 @@ function AppInner() {
   }, [pushToTalk, pttBinding]);
 
   // ptt-helper: the browser never sees keys pressed in another program, so a
-  // small local app watches the push-to-talk key system-wide and reports its
-  // edges over ws://127.0.0.1. Retries every few seconds while it isn't running.
+  // small local app watches the push-to-talk and mute keys system-wide and
+  // reports their edges over ws://127.0.0.1. Retries every few seconds while
+  // it isn't running.
+  const helperPttCode = pushToTalk && pttBinding ? pttBinding.code : null;
+  const helperMuteCode = muteBinding?.code ?? null;
   useEffect(() => {
-    if (!pushToTalk || !globalPtt || !pttBinding) {
+    helperMuteActiveRef.current = false;
+    if (!globalPtt) {
       setPttHelperStatus("off");
+      return;
+    }
+    const codes = [...new Set([helperPttCode, helperMuteCode].filter((c): c is string => !!c))];
+    if (codes.length === 0) {
+      setPttHelperStatus("nokey");
       return;
     }
     let ws: WebSocket | null = null;
     let retry: number | undefined;
     let stopped = false;
+    // 0.1 helpers watch a single key and only report it as {"type":"ptt"}.
+    let legacy = false;
     const connect = () => {
       try {
         ws = new WebSocket(`ws://127.0.0.1:${PTT_HELPER_PORT}`);
@@ -984,18 +1038,35 @@ function AppInner() {
         retry = window.setTimeout(connect, 5000);
         return;
       }
-      ws.onopen = () => ws?.send(JSON.stringify({ type: "bind", code: pttBinding.code }));
       ws.onmessage = (e) => {
-        let msg: { type?: string; ok?: boolean; pressed?: boolean };
+        let msg: { type?: string; version?: string; ok?: boolean; unsupported?: string[]; code?: string; pressed?: boolean };
         try {
           msg = JSON.parse(String(e.data));
         } catch {
           return;
         }
-        if (msg.type === "bound") setPttHelperStatus(msg.ok ? "connected" : "unsupported");
-        else if (msg.type === "ptt") setPttPressed(!!msg.pressed);
+        if (msg.type === "hello") {
+          legacy = /^0\.1\./.test(msg.version ?? "");
+          if (!legacy) ws?.send(JSON.stringify({ type: "bind", codes }));
+          else if (helperPttCode) ws?.send(JSON.stringify({ type: "bind", code: helperPttCode }));
+          else setPttHelperStatus("outdated");
+        } else if (msg.type === "bound") {
+          if (legacy) {
+            setPttHelperStatus(!msg.ok ? "unsupported" : helperMuteCode ? "outdated" : "connected");
+          } else {
+            const unsupported = msg.unsupported ?? [];
+            helperMuteActiveRef.current = !!helperMuteCode && !unsupported.includes(helperMuteCode);
+            setPttHelperStatus(msg.ok ? "connected" : "unsupported");
+          }
+        } else if (msg.type === "ptt") {
+          setPttPressed(!!msg.pressed);
+        } else if (msg.type === "key") {
+          if (msg.code === helperPttCode) setPttPressed(!!msg.pressed);
+          if (msg.code === helperMuteCode && msg.pressed) toggleMicRef.current();
+        }
       };
       ws.onclose = () => {
+        helperMuteActiveRef.current = false;
         if (stopped) return;
         // Never leave the mic open because the helper went away mid-press.
         setPttPressed(false);
@@ -1006,10 +1077,11 @@ function AppInner() {
     connect();
     return () => {
       stopped = true;
+      helperMuteActiveRef.current = false;
       window.clearTimeout(retry);
       ws?.close();
     };
-  }, [pushToTalk, globalPtt, pttBinding]);
+  }, [globalPtt, helperPttCode, helperMuteCode]);
 
   useEffect(() => {
     audioPlayerRef.current?.setVolume(playbackVolume);
@@ -3021,6 +3093,7 @@ function AppInner() {
     socketRef.current?.send(JSON.stringify({ type: "setInputMuted", muted: !inputMutedRef.current }));
     void notify(inputMutedRef.current ? "SOUND_CAPTURE_UNMUTED" : "SOUND_CAPTURE_MUTED");
   };
+  toggleMicRef.current = () => void handleToggleMic();
 
   // Enable the mic automatically on page load (voice activation still gates
   // what's actually sent) instead of requiring an explicit click every time.
@@ -5521,6 +5594,8 @@ function AppInner() {
             onPushToTalkChange: setPushToTalk,
             pttBinding,
             onPttBindingChange: setPttBinding,
+            muteBinding,
+            onMuteBindingChange: setMuteBinding,
             globalPtt,
             onGlobalPttChange: setGlobalPtt,
             pttHelperStatus,

@@ -107,6 +107,8 @@ export const PTT_HELPER_PORT = 37373;
 export const CONTINUOUS_KEY = "webspeak3:continuous-transmission";
 export const TYPING_ATTENUATION_KEY = "webspeak3:typing-attenuation";
 export const PTT_BINDING_KEY = "webspeak3:ptt-key";
+/** Key that toggles the microphone mute (press once to mute, again to unmute). */
+export const MUTE_BINDING_KEY = "webspeak3:mute-key";
 export const DESIGN_THEME_KEY = "webspeak3:design-theme";
 // The user's actual pick - "standard" | "nova" | "pulse" | "ide" | "custom:<id>".
 // DESIGN_THEME_KEY above keeps tracking just the resolved structural base, since a
@@ -228,13 +230,21 @@ export interface PttBinding {
   label: string;
 }
 
-export function loadPttBinding(): PttBinding | null {
+function loadBinding(storageKey: string): PttBinding | null {
   try {
-    const v = JSON.parse(localStorage.getItem(PTT_BINDING_KEY) ?? "null");
+    const v = JSON.parse(localStorage.getItem(storageKey) ?? "null");
     return v && typeof v.code === "string" && typeof v.label === "string" ? v : null;
   } catch {
     return null;
   }
+}
+
+export function loadPttBinding(): PttBinding | null {
+  return loadBinding(PTT_BINDING_KEY);
+}
+
+export function loadMuteBinding(): PttBinding | null {
+  return loadBinding(MUTE_BINDING_KEY);
 }
 
 export function keyBindingLabel(e: KeyboardEvent): string {

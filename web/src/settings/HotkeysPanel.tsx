@@ -5,6 +5,16 @@ import { useT } from "../i18n";
 
 export function HotkeysPanel({ audio }: { audio: AudioSettings }) {
   const t = useT();
+  const helperMessage =
+    audio.pttHelperStatus === "connected"
+      ? t("hotkeys.globalHelper.connected")
+      : audio.pttHelperStatus === "unsupported"
+        ? t("hotkeys.globalHelper.unsupported")
+        : audio.pttHelperStatus === "outdated"
+          ? t("hotkeys.globalHelper.outdated")
+          : audio.pttHelperStatus === "nokey"
+            ? t("hotkeys.globalHelper.nokey")
+            : t("hotkeys.globalHelper.missing");
   return (
     <>
       <h3>{t("options.section.hotkeys")}</h3>
@@ -20,22 +30,29 @@ export function HotkeysPanel({ audio }: { audio: AudioSettings }) {
           <PttKeyButton binding={audio.pttBinding} onChange={audio.onPttBindingChange} />
         </div>
         <p className="ts-options-hint">{t("recording.pttHint")}</p>
+      </fieldset>
+      <fieldset className="ts-options-fieldset">
+        <legend>{t("hotkeys.mute")}</legend>
+        <div className="ts-options-field-row">
+          {t("hotkeys.muteKey")}
+          <PttKeyButton binding={audio.muteBinding} onChange={audio.onMuteBindingChange} />
+          {audio.muteBinding && (
+            <button type="button" onClick={() => audio.onMuteBindingChange(null)}>
+              {t("hotkeys.clear")}
+            </button>
+          )}
+        </div>
+        <p className="ts-options-hint">{t("hotkeys.muteHint")}</p>
+      </fieldset>
+      <fieldset className="ts-options-fieldset">
+        <legend>{t("hotkeys.globalHelper.legend")}</legend>
         <label className="ts-options-checkbox">
-          <input
-            type="checkbox"
-            checked={audio.globalPtt}
-            disabled={!audio.pushToTalk}
-            onChange={(e) => audio.onGlobalPttChange(e.target.checked)}
-          />
+          <input type="checkbox" checked={audio.globalPtt} onChange={(e) => audio.onGlobalPttChange(e.target.checked)} />
           {t("hotkeys.globalHelper")}
         </label>
-        {audio.pushToTalk && audio.globalPtt && (
+        {audio.globalPtt && (
           <p className={`ts-ptt-helper-status ts-ptt-helper-${audio.pttHelperStatus}`} role="status">
-            {audio.pttHelperStatus === "connected"
-              ? t("hotkeys.globalHelper.connected")
-              : audio.pttHelperStatus === "unsupported"
-                ? t("hotkeys.globalHelper.unsupported")
-                : t("hotkeys.globalHelper.missing")}
+            {helperMessage}
           </p>
         )}
         <p className="ts-options-hint">

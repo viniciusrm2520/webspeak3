@@ -2,22 +2,25 @@
 //!
 //! Browsers only deliver keyboard input to a page while its tab has focus, so
 //! push-to-talk stops working the moment a game or another program is in
-//! front. This helper listens for one key system-wide and tells the page over
-//! a WebSocket on 127.0.0.1 when that key goes down and up.
+//! front. This helper listens for a few keys system-wide (push-to-talk, a
+//! mute toggle...) and tells the page over a WebSocket on 127.0.0.1 when they
+//! go down and up.
 //!
 //! It is deliberately not a general keyboard bridge:
-//! - each connected page names exactly one key (a KeyboardEvent.code such as
-//!   "NumpadSubtract") and only ever hears about that key;
+//! - each connected page names the keys it wants (KeyboardEvent.code values
+//!   such as "NumpadSubtract", at most four) and only ever hears about those;
 //! - only pages from allowed origins may connect (localhost by default, plus
 //!   any listed with --allow-origin or in allowed-origins.txt next to the
 //!   executable), because any website could otherwise open the socket;
 //! - it binds to the loopback interface only.
 //!
 //! Protocol (JSON text frames):
-//!   page   -> helper  {"type":"bind","code":"NumpadSubtract"}
-//!   helper -> page    {"type":"hello","version":"0.1.0"}
-//!   helper -> page    {"type":"bound","code":"NumpadSubtract","ok":true}
-//!   helper -> page    {"type":"ptt","pressed":true}
+//!   helper -> page    {"type":"hello","version":"0.2.0"}
+//!   page   -> helper  {"type":"bind","codes":["NumpadSubtract","F9"]}
+//!   helper -> page    {"type":"bound","ok":true,"unsupported":[]}
+//!   helper -> page    {"type":"key","code":"F9","pressed":true}
+//! The 0.1 single-key form still works: {"type":"bind","code":"X"} answers
+//! {"type":"bound","code":"X","ok":..} and reports {"type":"ptt","pressed":..}.
 
 use std::collections::HashMap;
 use std::io::ErrorKind;
@@ -43,9 +46,20 @@ enum Trigger {
     Button(Button),
 }
 
-struct Client {
-    trigger: Option<Trigger>,
+/// Most keys one page may watch: push-to-talk plus a few toggles, few enough
+/// that a page can't turn the helper into a keyboard logger.
+const MAX_KEYS: usize = 4;
+
+struct Watch {
+    code: String,
+    trigger: Trigger,
     pressed: bool,
+}
+
+struct Client {
+    watches: Vec<Watch>,
+    /// Bound with the 0.1 single-key message: report as {"type":"ptt"}.
+    legacy: bool,
     tx: Sender<String>,
 }
 
@@ -92,11 +106,18 @@ fn main() {
         };
         let mut map = hook_clients.lock().unwrap();
         for client in map.values_mut() {
-            // Auto-repeat sends KeyPress again and again while held; only the
-            // edges matter.
-            if client.trigger == Some(trigger) && client.pressed != down {
-                client.pressed = down;
-                let _ = client.tx.send(format!(r#"{{"type":"ptt","pressed":{down}}}"#));
+            for watch in client.watches.iter_mut() {
+                // Auto-repeat sends KeyPress again and again while held; only
+                // the edges matter.
+                if watch.trigger == trigger && watch.pressed != down {
+                    watch.pressed = down;
+                    let msg = if client.legacy {
+                        format!(r#"{{"type":"ptt","pressed":{down}}}"#)
+                    } else {
+                        format!(r#"{{"type":"key","code":"{}","pressed":{down}}}"#, watch.code)
+                    };
+                    let _ = client.tx.send(msg);
+                }
             }
         }
     }) {
@@ -136,7 +157,7 @@ fn serve(stream: TcpStream, id: u64, clients: Clients, origins: &Origins) {
     println!("page connected: {origin}");
 
     let (tx, rx): (Sender<String>, Receiver<String>) = channel();
-    clients.lock().unwrap().insert(id, Client { trigger: None, pressed: false, tx });
+    clients.lock().unwrap().insert(id, Client { watches: Vec::new(), legacy: false, tx });
     let _ = ws.send(Message::text(format!(r#"{{"type":"hello","version":"{VERSION}"}}"#)));
     let _ = ws.get_ref().set_read_timeout(Some(Duration::from_millis(15)));
 
@@ -148,18 +169,34 @@ fn serve(stream: TcpStream, id: u64, clients: Clients, origins: &Origins) {
         }
         match ws.read() {
             Ok(Message::Text(text)) => {
-                if let Some(code) = bind_code(&text) {
-                    let trigger = trigger_for(&code);
-                    if let Some(c) = clients.lock().unwrap().get_mut(&id) {
-                        c.trigger = trigger;
-                        c.pressed = false;
+                let Some(bind) = parse_bind(&text) else { continue };
+                let mut watches = Vec::new();
+                let mut unsupported = Vec::new();
+                for code in &bind.codes {
+                    match trigger_for(code) {
+                        Some(trigger) => watches.push(Watch { code: code.clone(), trigger, pressed: false }),
+                        None => unsupported.push(code.clone()),
                     }
-                    let ok = trigger.is_some();
-                    let reply = format!(r#"{{"type":"bound","code":"{}","ok":{ok}}}"#, json_escape(&code));
-                    if ws.send(Message::text(reply)).is_err() {
-                        break;
-                    }
-                    println!("{origin} listens for {code}{}", if ok { "" } else { " (unsupported key)" });
+                }
+                let ok = unsupported.is_empty();
+                let listed = if bind.codes.is_empty() { "nothing".to_string() } else { bind.codes.join(", ") };
+                let note = if ok { String::new() } else { format!(" (unsupported: {})", unsupported.join(", ")) };
+                println!("{origin} listens for {listed}{note}");
+                if let Some(c) = clients.lock().unwrap().get_mut(&id) {
+                    c.watches = watches;
+                    c.legacy = bind.legacy;
+                }
+                // Codes are validated alphanumeric in parse_bind, so they
+                // can go into the JSON unescaped.
+                let reply = if bind.legacy {
+                    let code = bind.codes.first().map(String::as_str).unwrap_or("");
+                    format!(r#"{{"type":"bound","code":"{code}","ok":{ok}}}"#)
+                } else {
+                    let list: Vec<String> = unsupported.iter().map(|c| format!(r#""{c}""#)).collect();
+                    format!(r#"{{"type":"bound","ok":{ok},"unsupported":[{}]}}"#, list.join(","))
+                };
+                if ws.send(Message::text(reply)).is_err() {
+                    break;
                 }
             }
             Ok(Message::Close(_)) => break,
@@ -172,25 +209,38 @@ fn serve(stream: TcpStream, id: u64, clients: Clients, origins: &Origins) {
     println!("page disconnected: {origin}");
 }
 
-/// Pulls "code" out of {"type":"bind","code":"..."} without a JSON crate -
-/// the only message a page ever sends.
-fn bind_code(text: &str) -> Option<String> {
-    if !text.contains(r#""bind""#) {
-        return None;
-    }
-    let start = text.find(r#""code""#)? + 6;
-    let rest = &text[start..];
-    let open = rest.find('"')? + 1;
-    let close = rest[open..].find('"')? + open;
-    let code = &rest[open..close];
-    if code.len() > 32 || !code.chars().all(|c| c.is_ascii_alphanumeric()) {
-        return None;
-    }
-    Some(code.to_string())
+struct Bind {
+    codes: Vec<String>,
+    legacy: bool,
 }
 
-fn json_escape(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
+/// Reads the only message a page ever sends: {"type":"bind","codes":[..]},
+/// or the 0.1 form {"type":"bind","code":".."}. Codes are KeyboardEvent.code
+/// names, so anything but short alphanumeric strings is refused outright.
+fn parse_bind(text: &str) -> Option<Bind> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    if v.get("type")?.as_str()? != "bind" {
+        return None;
+    }
+    let valid = |c: &str| !c.is_empty() && c.len() <= 32 && c.chars().all(|ch| ch.is_ascii_alphanumeric());
+    if let Some(list) = v.get("codes").and_then(|c| c.as_array()) {
+        let mut codes: Vec<String> = Vec::new();
+        for c in list {
+            let c = c.as_str()?;
+            if !valid(c) {
+                return None;
+            }
+            if !codes.iter().any(|x| x == c) {
+                codes.push(c.to_string());
+            }
+        }
+        if codes.len() > MAX_KEYS {
+            return None;
+        }
+        return Some(Bind { codes, legacy: false });
+    }
+    let code = v.get("code")?.as_str()?;
+    valid(code).then(|| Bind { codes: vec![code.to_string()], legacy: true })
 }
 
 /// Maps a browser KeyboardEvent.code (or the web client's "MouseN" for mouse
@@ -391,9 +441,16 @@ mod tests {
 
     #[test]
     fn parses_bind() {
-        assert_eq!(bind_code(r#"{"type":"bind","code":"NumpadSubtract"}"#).as_deref(), Some("NumpadSubtract"));
-        assert_eq!(bind_code(r#"{"type":"bind","code":"x\" or 1"}"#), None);
-        assert_eq!(bind_code(r#"{"type":"other"}"#), None);
+        let b = parse_bind(r#"{"type":"bind","codes":["NumpadSubtract","F9","F9"]}"#).unwrap();
+        assert_eq!(b.codes, vec!["NumpadSubtract", "F9"]);
+        assert!(!b.legacy);
+        let b = parse_bind(r#"{"type":"bind","code":"NumpadSubtract"}"#).unwrap();
+        assert_eq!(b.codes, vec!["NumpadSubtract"]);
+        assert!(b.legacy);
+        assert!(parse_bind(r#"{"type":"bind","codes":[]}"#).unwrap().codes.is_empty());
+        assert!(parse_bind(r#"{"type":"bind","code":"x\" or 1"}"#).is_none());
+        assert!(parse_bind(r#"{"type":"bind","codes":["KeyA","KeyB","KeyC","KeyD","KeyE"]}"#).is_none());
+        assert!(parse_bind(r#"{"type":"other"}"#).is_none());
     }
 
     #[test]
